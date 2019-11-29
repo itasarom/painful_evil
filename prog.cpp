@@ -87,6 +87,22 @@ double func_F(double x, double y) {
 }
 
 
+void MeshGrid(V& x, V& y, double x_min, double x_max, double y_min, double y_max, int N, int M, double* h1, double* h2) {
+	*h1 = (x_max - x_min)/(N - 1);
+	*h2 = (y_max - y_min)/(M - 1);
+
+	x.resize(N * M);
+	y.resize(N * M);
+
+	for (int i = 0; i < N; ++i) {
+		for (int j = 0; j < M; ++j) {
+			x[j + M * i] = x_min + i * *h1;
+			y[i + N * j] = y_min + j * *h2;
+		}
+	}
+}
+
+
 
 class LocalOperator {
 public:

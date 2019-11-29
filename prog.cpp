@@ -2,6 +2,7 @@
 #include <math.h>
 #include <iostream>
 #include <vector>
+#include <functional>
 
 using namespace std;
 
@@ -38,6 +39,54 @@ void ComputeBlockSize(int N, int M, int* block_h, int* block_w) {
 	*block_h = N;
 	*block_w = M;
 }
+
+using V = vector<double>;
+
+V apply(function<double(double, double)> foo, const V& x, const V& y) {
+	if (x.size() != y.size()) {
+		throw "asdfasd";
+	}
+	
+	V result(x.size());
+	for (size_t i = 0; i < x.size(); ++i) {
+		result[i] = foo(x[i], y[i]);
+	}
+	
+	return result;
+}
+
+
+double sqr(double x) {
+	return x*x;
+}
+
+double func_k(double x, double y) {
+	return x + 4;
+}
+
+double func_q(double x, double y) {
+
+	auto tmp = x + y;
+	return tmp * sqr(x + y);
+}
+
+double func_p(double x, double y) {
+	return -2 * (x + y);
+}
+
+double func_u(double x, double y) {
+	return exp(1 - sqr(x + y));
+}
+
+auto func_phi = func_u;
+
+double func_F(double x, double y) {
+	auto inner = (-2 * (sqr(func_p(x, y)) - 2) * func_k(x, y) - func_p(x, y)  + func_q(x, y));
+
+	return func_u(x, y) * inner;
+}
+
+
 
 class LocalOperator {
 public:

@@ -104,20 +104,60 @@ void MeshGrid(V& x, V& y, double x_min, double x_max, double y_min, double y_max
 
 
 
+void MeshGrid2(V& x, V& y, double x_min, double y_min, int N, int M, double h1, double h2) {
+
+	x.resize(N * M);
+	y.resize(N * M);
+
+	for (int i = 0; i < N; ++i) {
+		for (int j = 0; j < M; ++j) {
+			x[j + M * i] = x_min + i * h1;
+			y[i + N * j] = y_min + j * h2;
+		}
+	}
+}
+
+void PrintMatrix(const V& x, int N, int M) {
+	if (x.size() != N * M) {
+		throw "asdfasdf";
+	}
+
+	for (int i = 0; i < N; ++i) {
+		for(int j = 0; j < M; ++j) {
+			cout << x[j + i*M] << " ";
+		}
+		cout << endl;
+	}
+}
+
 class LocalOperator {
 public:
 	const int N, M;
 protected:
 	int row_pos, col_pos;
 	int block_h, block_w;
+	double h1, h2;
+	double my_x_min, my_y_min;
+	V x_, y_;
 public:
-	LocalOperator(int my_i, int my_j, int block_h_, int block_w_, int N_, int M_):
+	LocalOperator(int my_i, int my_j, int block_h_, int block_w_, int N_, int M_, double x_min, double x_max, double y_min, double y_max):
 		N(N_), M(M_)
 	 {
 		row_pos = my_i;
 		col_pos = my_j;
 		block_h = block_h_;
 		block_w = block_w_;
+
+		h1 = (x_max - x_min)/(N - 1);
+		h2 = (y_max - y_min)/(M - 1);
+		
+		my_x_min = x_min + row_pos * h1;
+		my_y_min = y_min + col_pos * h2;
+		
+		MeshGrid2(x_, y_, my_x_min, my_y_min, block_h, block_w, h1, h2);
+		
+		PrintMatrix(x_, block_h, block_w);
+		PrintMatrix(y_, block_h, block_w);
 	 }
 };
 
@@ -177,6 +217,9 @@ void ParseArgs(int argc, char **argv, int* N, int* M) {
 	*M = 10;
 }
 
+const double X_MIN = -1, X_MAX = 2;
+const double Y_MIN = -2, Y_MAX = 2;
+
 int main(int argc, char** argv) {
 	MPI_Init(&argc, &argv);
 
@@ -194,7 +237,7 @@ int main(int argc, char** argv) {
 	ComputeLatticeCoord(world_rank, &my_i, &my_j);
 	ComputeBlockSize(N, M, &block_h, &block_w);
 	
-	LocalOperator op(my_i, my_j, N, M, block_h, block_w);
+	LocalOperator op(my_i, my_j, N, M, block_h, block_w, X_MIN, X_MAX, Y_MIN, Y_MAX);
 	
 	/*
 	auto my_w = Solve();

@@ -1,3 +1,5 @@
+#include "mpi.h"
+#include <math.h>
 #include <iostream>
 #include <vector>
 
@@ -23,12 +25,12 @@ int ComputeLatticeId(int i, int j) {
 }
 
 void SendBorder(const vector<double>& border, int dst, int me) {
-	MPI_Send(border.data(), border.size(), MPI_DOUBLE, dst, me, COMM_BORDER_SYNC);
+	MPI_Send(border.data(), border.size(), MPI_DOUBLE, dst, me, MPI_COMM_WORLD);
 }
 
 void RecvBorder(vector<double>& border, int src) {
 	MPI_Status status;
-	MPI_Recv(border.data(), border.size(), MPI_DOUBLE, src, src, COMM_BORDER_SYNC, &status);
+	MPI_Recv(border.data(), border.size(), MPI_DOUBLE, src, src, MPI_COMM_WORLD, &status);
 }
 
 vector<double> SyncBorder(int my_i, int my_j, int other_i, int other_j, vector<double> my_border) {
@@ -40,7 +42,7 @@ vector<double> SyncBorder(int my_i, int my_j, int other_i, int other_j, vector<d
 
 	return other_border;
 }
-
+/*
 class Block {
 	vector<double> data;
 	vector<double> border1;
@@ -71,21 +73,25 @@ Block Step(const Block& w, int block_row, int block_col, int width, int height) 
 	return new_w;
 }
 
-
+*/
 int main(int argc, char** argv) {
 	MPI_Init(&argc, &argv);
 
-	MPI_Comm_rank(COMM_BORDER_SYNC, &world_rank);
-	MPI_Comm_size(COMM_BORDER_SYNC, &world_size);
+	MPI_Comm_rank(MPI_COMM_WORLD, &world_rank);
+	MPI_Comm_size(MPI_COMM_WORLD, &world_size);
+
+	std::cout << world_rank << endl;
 	
+	/*	
 	InitLocalOperator();
 	auto my_w = Solve();
 	SendLocalResultsTo0(my_w);
-
+	
 	if(world_rank == 0) {
 		auto result = ReceiveLocalResults();
 		DoIOStuff();
 	}
+	*/
 
 	MPI_Finalize();
 }

@@ -244,8 +244,41 @@ public:
 		}
 
 
-		PrintMatrix(rhs);
+	
+	}
+
+
+	//Matrix Call(Matrix& w, const V& border_x0, const V& border_x1, const V& border_y0, const V& border_y1) {
+	Matrix Call(Matrix& w) {
+		if (w.N != w_ij_coefs.N || w.M != w_ij_coefs.M) {
+			throw "WTF";
+		}	
 		
+		Matrix result(w.N, w.M);
+		
+		for (int i = 0; i < block_h; ++i) {
+			for (int j = 0; j < block_w; ++j) {
+				result.at(i, j) = w_ij_coefs.at(i, j) * w.at(i, j);
+			}
+		}
+		
+		for (int i = 0; i < block_h - 1; ++i) {
+			for (int j = 0; j < block_w; ++j) {
+				result.at(i, j) += w_ip1j_coefs.at(i, j) * w.at(i + 1, j);
+			}
+		}
+
+		for (int i = 1; i < block_h; ++i) {
+			for (int j = 0; j < block_w; ++j) {
+				result.at(i, j) += w_im1j_coefs.at(i, j) * w.at(i - 1, j);
+			}
+		}
+
+		
+		
+		PrintMatrix(result);
+
+		return result;
 	}
 		
 	
@@ -328,6 +361,9 @@ int main(int argc, char** argv) {
 	ComputeBlockSize(N, M, &block_h, &block_w);
 	
 	LocalOperator op(my_i, my_j, N, M, block_h, block_w, X_MIN, X_MAX, Y_MIN, Y_MAX);
+	
+	Matrix ones(block_h, block_w, 1);
+	auto Aw = op.Call(ones);
 	
 	/*
 	auto my_w = Solve();

@@ -200,14 +200,17 @@ public:
 
 
 		BuildLhs();
+		BuildRhs();
 	 }
 
+	V w_ij_coefs, w_ip1j_coefs, w_im1j_coefs, w_ijp1_coefs, w_ijm1_coefs, rhs, phi;
+
 	void BuildLhs() {
-		V w_ij_coefs(x_.size());
-		V w_ip1j_coefs(x_.size());
-		V w_im1j_coefs(x_.size());
-		V w_ijp1_coefs(x_.size());
-		V w_ijm1_coefs(x_.size());
+		w_ij_coefs.resize(x_.size());
+		w_ip1j_coefs.resize(x_.size());
+		w_im1j_coefs.resize(x_.size());
+		w_ijp1_coefs.resize(x_.size());
+		w_ijm1_coefs.resize(x_.size());
 
 		cout << h1 << " " << h2 << endl;
 		cout << "=========\n";
@@ -226,10 +229,53 @@ public:
 				w_ijm1_coefs[pos] = -func_k(x_[pos], y_[pos] - 0.5 * h2)/sqr(h2);
 			}
 		} 
-		PrintMatrix(w_ijm1_coefs, block_h, block_w);
-
-
  
+	}
+	
+
+	void BuildRhs() {
+		phi.resize((block_w + 2) * (block_h + 2));
+		
+		for (int i = 0; i < block_h + 2; ++i) {
+			for (int j = 0; j < block_w + 2; ++j) {
+				int pos = j + i * block_w;
+				phi[pos] = func_phi(x_[pos], y_[pos]);
+				if (i >= 1 && i < block_h + 1 && j >= 1 && j < block_w + 1) {
+					int pos = (j - 1) + (i - 1) * (block_w);
+				}
+			}
+		}
+
+		rhs = phi;
+		
+		/*
+		for (int i = 0; i < block_h; ++i) {
+			int j = 1;
+			int pos = j + block_w * i;
+			rhs[pos] -= phi[pos] * w_ijm1_coefs[pos];  
+		}
+
+		for (int i = 0; i < block_h; ++i) {
+			int j = block_w - 2;
+			int pos = j + block_w * i;
+			rhs[pos] -= phi[pos] * w_ijp1_coefs[pos];  
+		}
+*/
+
+		for (int j = 0; j < block_w; ++j) {
+			int i = 1;
+			int pos = j + block_w * i;
+			rhs[pos] -= phi[pos] * w_im1j_coefs[pos];  
+		}
+/*		
+		for (int j = 0; j < block_w; ++j) {
+			int i = block_h - 2;
+			int pos = j + block_w * i;
+			rhs[pos] -= phi[pos] * w_ip1j_coefs[pos];  
+		}
+*/
+
+		PrintMatrix(rhs, block_h, block_w);
 	}
 };
 

@@ -594,31 +594,33 @@ int main(int argc, char** argv) {
 
 	ComputeBlockSize(N, M, &block_h, &block_w);
 	int row_pos, col_pos;
+	
 	row_pos = N / lattice_n * my_i;
 	col_pos = M / lattice_m * my_j;
 
 	
-	/*	
+		
 	out << "My size:" << world_rank << " " << block_h << " " << block_w <<  " " << row_pos << " " << col_pos << endl;
 	cerr << out.str();
 	out.str("");
 	out.clear();
-	*/
+	
 	
 	MPI_Barrier(MPI_COMM_WORLD);
 	
-	LocalOperator op(my_i, my_j, N, M, block_h, block_w, X_MIN, X_MAX, Y_MIN, Y_MAX);
+	LocalOperator op(row_pos, col_pos, N, M, block_h, block_w, X_MIN, X_MAX, Y_MIN, Y_MAX);
 	
-	out << world_rank << endl;
+	out <<"Rank" <<  world_rank << endl;
 	for (int i = 0; i < op.block_h; ++i) {
 		for (int j = 0; j < op.block_w; ++j) {
 			out << op.x_.cat(i, j) << " ";
 		}
 		out << endl;
 	}
+	out << "=============\n";
 	
 
-	//cerr << out.str();
+	cerr << out.str();
 	
 	auto my_w = Solve(op, 100, 1e-6); 
 	//PrintMatrix(my_w);

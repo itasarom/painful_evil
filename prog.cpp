@@ -560,7 +560,6 @@ int main(int argc, char** argv) {
 		DoIOStuff();
 	}
 	*/
-	throw "SDFSDFSDF";
 
 	MPI_Finalize();
 }

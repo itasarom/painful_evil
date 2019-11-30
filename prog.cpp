@@ -41,31 +41,48 @@ void ComputeBlockSize(int N, int M, int* block_h, int* block_w) {
 }
 
 using V = vector<double>;
-void PrintMatrix(const V& x, int N, int M) {
-	if (x.size() != N * M) {
-		throw "asdfasdf";
+
+struct Matrix {
+	V data;
+	int M, N;
+	Matrix(const V& data_, int N_, int M_):data(data_), N(N_), M(M_) {
+		if (data.size() != N * M) {
+			throw "asdfasdf";
+		}
+	}
+	
+	Matrix(int N_, int M_, double fill=0.0): data(N_ * M_, fill), N(N_), M(M_) {
+	}
+	
+	Matrix() = default;
+	double& operator[] (int i) {
+		return data[i];
 	}
 
-	for (int i = 0; i < N; ++i) {
-		for(int j = 0; j < M; ++j) {
-			cout << x[j + i*M] << " ";
+	double& at(int i, int j) {
+		int pos = j + i * M; 
+		return data[pos];
+	}
+
+	void reset(int N_, int M_, double fill=0.0) {
+		N = N_;
+		M = M_;
+		data.clear();
+		data.resize(N_ * M_, fill);
+	}
+};
+
+
+void PrintMatrix(Matrix& m) {
+
+	for (int i = 0; i < m.N; ++i) {
+		for(int j = 0; j < m.M; ++j) {
+			cout << m.at(i, j) << " ";
 		}
 		cout << endl;
 	}
 }
 
-V apply(function<double(double, double)> foo, const V& x, const V& y) {
-	if (x.size() != y.size()) {
-		throw "asdfasd";
-	}
-	
-	V result(x.size());
-	for (size_t i = 0; i < x.size(); ++i) {
-		result[i] = foo(x[i], y[i]);
-	}
-	
-	return result;
-}
 
 
 double sqr(double x) {
@@ -99,37 +116,22 @@ double func_F(double x, double y) {
 }
 
 
-void MeshGrid(V& x, V& y, double x_min, double x_max, double y_min, double y_max, int N, int M, double* h1, double* h2) {
-	*h1 = (x_max - x_min)/(N - 1);
-	*h2 = (y_max - y_min)/(M - 1);
-
-	x.resize(N * M);
-	y.resize(N * M);
-
-	for (int i = 0; i < N; ++i) {
-		for (int j = 0; j < M; ++j) {
-			x[j + M * i] = x_min + i * *h1;
-			y[i + N * j] = y_min + j * *h2;
-		}
-	}
-}
 
 
+void MeshGrid2(Matrix& x, Matrix& y, double x_min, double y_min, int N, int M, double h1, double h2) {
 
-void MeshGrid2(V& x, V& y, double x_min, double y_min, int N, int M, double h1, double h2) {
-
-	x.resize(N * M);
-	y.resize(N * M);
+	x.reset(N, M);
+	y.reset(N, M);
 
 	for (int i = 0; i < N; ++i) {
 		for (int j = 0; j < M; ++j) {
-			x[j + M * i] = x_min + i * h1;
+			x.at(i, j) = x_min + i * h1;
 		}
 	}
 
 	for (int i = 0; i < N; ++i) {
 		for (int j = 0; j < M; ++j) {
-			y[j + M * i] = y_min + j * h2;
+			y.at(i, j) = y_min + j * h2;
 		}
 	}
 
@@ -137,38 +139,6 @@ void MeshGrid2(V& x, V& y, double x_min, double y_min, int N, int M, double h1, 
 
 }
 
-V operator + (const V& a, const V& b) {
-	if (a.size() != b.size()) {
-		throw "SDFSDFS";
-	}
-
-	V result(a.size());
-	for (size_t i = 0; i < a.size(); ++i) {
-		result[i] = a[i] + b[i];
-	}
-
-	return result;
-}
-
-V operator * (const V& a, double num) {
-
-	V result(a.size());
-	for (size_t i = 0; i < a.size(); ++i) {
-		result[i] = a[i] * num;
-	}
-
-	return result;
-}
-
-V operator / (const V& a, double num) {
-
-	V result(a.size());
-	for (size_t i = 0; i < a.size(); ++i) {
-		result[i] = a[i] / num;
-	}
-
-	return result;
-}
 
 
 class LocalOperator {
@@ -179,7 +149,7 @@ protected:
 	int block_h, block_w;
 	double h1, h2;
 	double my_x_min, my_y_min;
-	V x_, y_;
+	Matrix x_, y_;
 public:
 	LocalOperator(int my_i, int my_j, int block_h_, int block_w_, int N_, int M_, double x_min, double x_max, double y_min, double y_max):
 		N(N_), M(M_)
@@ -189,8 +159,8 @@ public:
 		block_h = block_h_;
 		block_w = block_w_;
 
-		h1 = (x_max - x_min)/(N - 1);
-		h2 = (y_max - y_min)/(M - 1);
+		h1 = (x_max - x_min)/(block_h - 1);
+		h2 = (y_max - y_min)/(block_w - 1);
 		
 		my_x_min = x_min + row_pos * h1;
 		my_y_min = y_min + col_pos * h2;
@@ -200,17 +170,17 @@ public:
 
 
 		BuildLhs();
-		BuildRhs();
+		//BuildRhs();
 	 }
 
-	V w_ij_coefs, w_ip1j_coefs, w_im1j_coefs, w_ijp1_coefs, w_ijm1_coefs, rhs, phi;
+	Matrix w_ij_coefs, w_ip1j_coefs, w_im1j_coefs, w_ijp1_coefs, w_ijm1_coefs, rhs, phi;
 
 	void BuildLhs() {
-		w_ij_coefs.resize(x_.size());
-		w_ip1j_coefs.resize(x_.size());
-		w_im1j_coefs.resize(x_.size());
-		w_ijp1_coefs.resize(x_.size());
-		w_ijm1_coefs.resize(x_.size());
+		w_ij_coefs.reset(block_h, block_w);
+		w_ip1j_coefs.reset(block_h, block_w);
+		w_im1j_coefs.reset(block_h, block_w);
+		w_ijp1_coefs.reset(block_h, block_w);
+		w_ijm1_coefs.reset(block_h, block_w);
 
 		cout << h1 << " " << h2 << endl;
 		cout << "=========\n";
@@ -218,20 +188,22 @@ public:
 
 		for (int i = 0; i < block_h; ++i) {
 			for (int j = 0; j < block_w; ++j) {
-				int pos = j + i * M;
-				w_ij_coefs[pos] = 
-(func_k(x_[pos] + 0.5 * h1, y_[pos]) +  func_k(x_[pos] - 0.5 * h1, y_[pos]))/sqr(h1) + 
-(func_k(x_[pos], y_[pos] + 0.5 * h2) +  func_k(x_[pos], y_[pos] - 0.5 * h2))/sqr(h2) + func_q(x_[pos], y_[pos]);
+				w_ij_coefs.at(i, j) = 
+(func_k(x_.at(i, j) + 0.5 * h1, y_.at(i, j)) +  func_k(x_.at(i, j) - 0.5 * h1, y_.at(i, j)))/sqr(h1) + 
+(func_k(x_.at(i, j), y_.at(i, j) + 0.5 * h2) +  func_k(x_.at(i, j), y_.at(i, j) - 0.5 * h2))/sqr(h2) + func_q(x_.at(i, j), y_.at(i, j));
 		
-				w_ip1j_coefs[pos] = -func_k(x_[pos] + 0.5 * h1, y_[pos])/sqr(h1);
-				w_im1j_coefs[pos] = -func_k(x_[pos] - 0.5 * h1, y_[pos])/sqr(h1);
-				w_ijp1_coefs[pos] = -func_k(x_[pos], y_[pos] + 0.5 * h2)/sqr(h2);
-				w_ijm1_coefs[pos] = -func_k(x_[pos], y_[pos] - 0.5 * h2)/sqr(h2);
+				w_ip1j_coefs.at(i, j) = -func_k(x_.at(i, j) + 0.5 * h1, y_.at(i, j))/sqr(h1);
+				w_im1j_coefs.at(i, j) = -func_k(x_.at(i, j) - 0.5 * h1, y_.at(i, j))/sqr(h1);
+				w_ijp1_coefs.at(i, j) = -func_k(x_.at(i, j), y_.at(i, j) + 0.5*h2)/sqr(h2);
+				w_ijm1_coefs.at(i, j) = -func_k(x_.at(i, j), y_.at(i, j) - 0.5*h2)/sqr(h2);
+		
 			}
 		} 
+
  
 	}
 	
+	/*	
 
 	void BuildRhs() {
 		phi.resize((block_w + 2) * (block_h + 2));
@@ -248,35 +220,7 @@ public:
 
 		rhs = phi;
 		
-		/*
-		for (int i = 0; i < block_h; ++i) {
-			int j = 1;
-			int pos = j + block_w * i;
-			rhs[pos] -= phi[pos] * w_ijm1_coefs[pos];  
-		}
-
-		for (int i = 0; i < block_h; ++i) {
-			int j = block_w - 2;
-			int pos = j + block_w * i;
-			rhs[pos] -= phi[pos] * w_ijp1_coefs[pos];  
-		}
-*/
-
-		for (int j = 0; j < block_w; ++j) {
-			int i = 1;
-			int pos = j + block_w * i;
-			rhs[pos] -= phi[pos] * w_im1j_coefs[pos];  
-		}
-/*		
-		for (int j = 0; j < block_w; ++j) {
-			int i = block_h - 2;
-			int pos = j + block_w * i;
-			rhs[pos] -= phi[pos] * w_ip1j_coefs[pos];  
-		}
-*/
-
-		PrintMatrix(rhs, block_h, block_w);
-	}
+	*/
 };
 
 void SendBorder(const vector<double>& border, int dst, int me) {

@@ -12,6 +12,7 @@ int world_size;
 
 int lattice_n;
 int lattice_m;
+int my_i, my_j;
 
 int ComputeLatticeId(int i, int j) {
 	if (i > lattice_n) {
@@ -401,9 +402,12 @@ void GetBorders(const Matrix& m,
 }
 
 
-void SyncBorders(const V& s, V& r, int other_i, int other_j) {
+void SyncBorder(const V& s, V& r, int other_i, int other_j) {
+	
+
 	int dst = 0;
 	int me = 0;
+
 	MPI_Send(s.data(), s.size(), MPI_DOUBLE, dst, me, MPI_COMM_WORLD);
 	MPI_Status status;
         MPI_Recv(r.data(), r.size(), MPI_DOUBLE, dst, dst, MPI_COMM_WORLD, &status);
@@ -426,9 +430,16 @@ Matrix Solve(LocalOperator &op, int max_iter, double eps=1e-6) {
 	V border_y1_r(op.block_h, 0);
 	
 	for (int iter = 0; iter < max_iter; ++iter) {
+		GetBorders(w, border_x0_s, border_x1_s, border_y0_s, border_y1_s);
+	
+		SyncBorder(border_x0_s, border_x0_r, my_i - 1, my_j);
+		SyncBorder(border_x1_s, border_x1_r, my_i + 1, my_j);
+		SyncBorder(border_y0_s, border_y0_r, my_i, my_j - 1);
+		SyncBorder(border_y1_s, border_y1_r, my_i - 1, my_j + 1);
 		
 
 		auto Aw = op.Call(w);
+		
 		
 	
 		auto r = Aw - op.rhs;
@@ -464,7 +475,6 @@ int main(int argc, char** argv) {
 	ParseArgs(argc, argv, &N, &M);
 	GetLatticeParams();
 
-	int my_i, my_j;
 	int block_h, block_w;
 	
 	ComputeLatticeCoord(world_rank, &my_i, &my_j);

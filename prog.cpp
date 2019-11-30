@@ -170,7 +170,7 @@ public:
 
 
 		BuildLhs();
-		//BuildRhs();
+		BuildRhs();
 	 }
 
 	Matrix w_ij_coefs, w_ip1j_coefs, w_im1j_coefs, w_ijp1_coefs, w_ijm1_coefs, rhs, phi;
@@ -203,24 +203,52 @@ public:
  
 	}
 	
-	/*	
+		
 
 	void BuildRhs() {
-		phi.resize((block_w + 2) * (block_h + 2));
+		rhs.reset(block_h, block_w );
 		
-		for (int i = 0; i < block_h + 2; ++i) {
-			for (int j = 0; j < block_w + 2; ++j) {
-				int pos = j + i * block_w;
-				phi[pos] = func_phi(x_[pos], y_[pos]);
-				if (i >= 1 && i < block_h + 1 && j >= 1 && j < block_w + 1) {
-					int pos = (j - 1) + (i - 1) * (block_w);
-				}
+		for (int i = 0; i < block_h; ++i) {
+			for (int j = 0; j < block_w; ++j) {
+				rhs.at(i, j) = func_F(x_.at(i, j), y_.at(i,j));
 			}
 		}
 
-		rhs = phi;
+		if (row_pos == 0) {
+			for (int j = 0; j < block_w; ++j) {
+				int i = 0;
+				rhs.at(i, j) -= func_phi(x_.at(i, j) - h1,  y_.at(i, j)) * w_im1j_coefs.at(i, j);
+			}
+		}
+
+		if (row_pos + block_h == N) {
+			for (int j = 0; j < block_w; ++j) {
+				int i = block_h - 1;
+				rhs.at(i, j) -= func_phi(x_.at(i, j) + h1,  y_.at(i, j)) * w_ip1j_coefs.at(i, j);
+			}
+			
+		}
+
+		if (col_pos == 0) {
+			for (int i = 0; i < block_h; ++i) {
+				int j = 0;
+				rhs.at(i, j) -= func_phi(x_.at(i, j),  y_.at(i, j) - h2) * w_ijm1_coefs.at(i, j);
+			}
+		}
+
+		if (col_pos + block_w == M) {
+			for (int i = 0; i < block_h; ++i) {
+				int j = block_w - 1;
+				rhs.at(i, j) -= func_phi(x_.at(i, j),  y_.at(i, j) + h2) * w_ijp1_coefs.at(i, j);
+			}
+		}
+
+
+		PrintMatrix(rhs);
 		
-	*/
+	}
+		
+	
 };
 
 void SendBorder(const vector<double>& border, int dst, int me) {

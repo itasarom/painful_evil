@@ -446,19 +446,25 @@ void SyncBorder(const V& s, V& r, int other_i, int other_j) {
 	int me = world_rank;
 	int dst = ComputeLatticeId(other_i, other_j);
 
-	out << "to sync" <<  dst << " " << me << " " << endl;
-	cerr << out.str();
-	out.clear();
+	//out << "to sync" <<  dst << " " << me << " " << endl;
+	//cerr << out.str();
+	//out.clear();
 	
-	cerr << "Sync\n";
+	//cerr << "Sync\n";
 
 	MPI_Send(s.data(), s.size(), MPI_DOUBLE, dst, 0, MPI_COMM_WORLD);
 	MPI_Status status;
         MPI_Recv(r.data(), r.size(), MPI_DOUBLE, dst, 0, MPI_COMM_WORLD, &status);
-	out << "OK" <<  dst << " " << me << " " << endl;
-	cerr << out.str();
-	out.clear();
+	//out << "OK" <<  dst << " " << me << " " << endl;
+	//cerr << out.str();
+	//out.clear();
 } 
+
+double SyncDouble(double value) {
+	double result;
+	MPI_Allreduce(&value, &result, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD); 
+	return result;
+}
 
 
 Matrix Solve(LocalOperator &op, int max_iter, double eps=1e-6) {
@@ -490,14 +496,27 @@ Matrix Solve(LocalOperator &op, int max_iter, double eps=1e-6) {
 		
 	
 		auto r = Aw - op.rhs;
+		GetBorders(r, border_x0_s, border_x1_s, border_y0_s, border_y1_s);
+	
+		SyncBorder(border_x0_s, border_x0_r, my_i - 1, my_j);
+		SyncBorder(border_x1_s, border_x1_r, my_i + 1, my_j);
+		SyncBorder(border_y0_s, border_y0_r, my_i, my_j - 1);
+		SyncBorder(border_y1_s, border_y1_r, my_i, my_j + 1);
 		auto Ar = op.Call(r);
 		
-		double tau = op.Dot(r, Ar)/op.Dot(Ar, Ar);
+		double rAr = SyncDouble(op.Dot(r, Ar));
+		double ArAr = SyncDouble(op.Dot(Ar, Ar));
+		double rr = SyncDouble(op.Dot(r, r));
 		
-		auto new_w = w - r * tau;
-		double d = op.Norm(new_w - w);
+		double tau = rAr/ArAr;
+		//out << world_rank << " " << rAr << " " << ArAr << " " << tau << endl;
+		//cerr << out.str();
+		//out.str("");
+		//out.clear();
+		
+		w = w - r * tau;
+		double d = sqrt(rr) * tau;
 
-		w = new_w;
 
 		if (d  < eps) {
 			break;

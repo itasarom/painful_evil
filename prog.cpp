@@ -331,8 +331,7 @@ public:
 	}
 
 
-	//Matrix Call(Matrix& w, const V& border_x0, const V& border_x1, const V& border_y0, const V& border_y1) {
-	Matrix Call(Matrix& w) {
+	Matrix Call(const Matrix& w, const V& border_x0, const V& border_x1, const V& border_y0, const V& border_y1) {
 		if (w.N != w_ij_coefs.N || w.M != w_ij_coefs.M) {
 			throw "WTF";
 		}	
@@ -341,31 +340,31 @@ public:
 		
 		for (int i = 0; i < block_h; ++i) {
 			for (int j = 0; j < block_w; ++j) {
-				result.at(i, j) = w_ij_coefs.at(i, j) * w.at(i, j);
+				result.at(i, j) = w_ij_coefs.cat(i, j) * w.cat(i, j);
 			}
 		}
 		
 		for (int i = 0; i < block_h - 1; ++i) {
 			for (int j = 0; j < block_w; ++j) {
-				result.at(i, j) += w_ip1j_coefs.at(i, j) * w.at(i + 1, j);
+				result.at(i, j) += w_ip1j_coefs.cat(i, j) * w.cat(i + 1, j);
 			}
 		}
 
 		for (int i = 1; i < block_h; ++i) {
 			for (int j = 0; j < block_w; ++j) {
-				result.at(i, j) += w_im1j_coefs.at(i, j) * w.at(i - 1, j);
+				result.at(i, j) += w_im1j_coefs.cat(i, j) * w.cat(i - 1, j);
 			}
 		}
 
 		for (int i = 0; i < block_h; ++i) {
 			for (int j = 0; j < block_w - 1; ++j) {
-				result.at(i, j) += w_ijp1_coefs.at(i, j) * w.at(i, j + 1);
+				result.at(i, j) += w_ijp1_coefs.cat(i, j) * w.cat(i, j + 1);
 			}
 		}
 
 		for (int i = 0; i < block_h; ++i) {
 			for (int j = 1; j < block_w; ++j) {
-				result.at(i, j) += w_ijm1_coefs.at(i, j) * w.at(i, j - 1);
+				result.at(i, j) += w_ijm1_coefs.cat(i, j) * w.cat(i, j - 1);
 			}
 		}
 
@@ -491,7 +490,7 @@ Matrix Solve(LocalOperator &op, int max_iter, double eps=1e-6) {
 		SyncBorder(border_y1_s, border_y1_r, my_i, my_j + 1);
 		
 
-		auto Aw = op.Call(w);
+		auto Aw = op.Call(w, border_x0_r, border_x1_r, border_y0_r, border_y1_r);
 		
 		
 	
@@ -502,7 +501,7 @@ Matrix Solve(LocalOperator &op, int max_iter, double eps=1e-6) {
 		SyncBorder(border_x1_s, border_x1_r, my_i + 1, my_j);
 		SyncBorder(border_y0_s, border_y0_r, my_i, my_j - 1);
 		SyncBorder(border_y1_s, border_y1_r, my_i, my_j + 1);
-		auto Ar = op.Call(r);
+		auto Ar = op.Call(r, border_x0_r, border_x1_r, border_y0_r, border_y1_r);
 		
 		double rAr = SyncDouble(op.Dot(r, Ar));
 		double ArAr = SyncDouble(op.Dot(Ar, Ar));

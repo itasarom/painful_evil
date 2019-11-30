@@ -64,12 +64,58 @@ struct Matrix {
 		return data[pos];
 	}
 
+	double cat(int i, int j) const {
+		int pos = j + i * M; 
+		return data[pos];
+	}
+
 	void reset(int N_, int M_, double fill=0.0) {
 		N = N_;
 		M = M_;
 		data.clear();
 		data.resize(N_ * M_, fill);
 	}
+
+
+	Matrix operator - (const Matrix& other) const {
+		Matrix result(N, M);
+		
+		for (int i = 0; i < N; ++i) {
+			for (int j = 0; j < M; ++j) {
+				result.at(i, j) = cat(i, j) - other.cat(i, j);
+			}
+		}
+
+		return result;
+	}
+
+	Matrix operator + (const Matrix& other) const {
+		Matrix result(N, M);
+		
+		for (int i = 0; i < N; ++i) {
+			for (int j = 0; j < M; ++j) {
+				result.at(i, j) = cat(i, j) + other.cat(i, j);
+			}
+		}
+
+		return result;
+	}
+
+	
+	Matrix operator * (double num) const {
+		Matrix result(N, M);
+		
+		for (int i = 0; i < N; ++i) {
+			for (int j = 0; j < M; ++j) {
+				result.at(i, j) = cat(i, j) * num;
+			}
+		}
+
+		return result;
+	}
+
+
+	
 };
 
 
@@ -144,9 +190,9 @@ void MeshGrid2(Matrix& x, Matrix& y, double x_min, double y_min, int N, int M, d
 class LocalOperator {
 public:
 	const int N, M;
+	int block_h, block_w;
 protected:
 	int row_pos, col_pos;
-	int block_h, block_w;
 	double h1, h2;
 	double my_x_min, my_y_min;
 	Matrix x_, y_;
@@ -206,7 +252,16 @@ public:
 		
 
 	void BuildRhs() {
-		rhs.reset(block_h, block_w );
+		phi.reset(block_h, block_w);
+
+		for (int i = 0; i < block_h; ++i) {
+			for (int j = 0; j < block_w; ++j) {
+				phi.at(i, j) = func_phi(x_.at(i, j),  y_.at(i, j));
+			}
+		}
+
+		
+		rhs.reset(block_h, block_w);
 		
 		for (int i = 0; i < block_h; ++i) {
 			for (int j = 0; j < block_w; ++j) {
@@ -287,12 +342,29 @@ public:
 		}
 
 		
-		
-		PrintMatrix(result);
 
 		return result;
 	}
 		
+	double Dot(const Matrix &a, const Matrix& b) const {
+		double result = 0.0;
+		for (int i = 0; i < N; ++i) {
+			for (int j = 0; j < M; ++j) {
+				result += a.cat(i,j) * b.cat(i, j);
+			}
+		}
+
+		
+		return result * (h1 * h2);
+	}
+
+	double Norm2(const Matrix& a) const {
+		return Dot(a, a);
+	}
+
+	double Norm(const Matrix& a) const {
+		return sqrt(Norm2(a));
+	}
 	
 };
 
@@ -350,6 +422,34 @@ Block Step(const Block& w, int block_row, int block_col, int width, int height) 
 void ParseArgs(int argc, char **argv, int* N, int* M) {
 	*N = 4;
 	*M = 7;
+	*N = 100;
+	*M = 100;
+}
+
+
+Matrix Solve(LocalOperator &op, int max_iter, double eps=1e-6) {
+	Matrix w(op.block_h, op.block_w, 0.0);
+	
+	for (int iter = 0; iter < max_iter; ++iter) {
+		auto Aw = op.Call(w);
+		auto r = Aw - op.rhs;
+		auto Ar = op.Call(r);
+		
+		double tau = op.Dot(r, Ar)/op.Dot(Ar, Ar);
+		
+		auto new_w = w - r * tau;
+		double d = op.Norm(new_w - w);
+
+		w = new_w;
+
+		if (d  < eps) {
+			break;
+		}
+		
+		cout << ">> " << iter << " "  << op.Norm2(w - op.phi) << endl;
+	}
+
+	return w;
 }
 
 const double X_MIN = -1, X_MAX = 2;
@@ -363,7 +463,6 @@ int main(int argc, char** argv) {
 
 	int N, M;
 	ParseArgs(argc, argv, &N, &M);
-
 	GetLatticeParams();
 
 	int my_i, my_j;
@@ -374,8 +473,8 @@ int main(int argc, char** argv) {
 	
 	LocalOperator op(my_i, my_j, N, M, block_h, block_w, X_MIN, X_MAX, Y_MIN, Y_MAX);
 	
-	Matrix ones(block_h, block_w, 1);
-	auto Aw = op.Call(ones);
+	auto my_w = Solve(op, 10000, 1e-6); 
+	//PrintMatrix(my_w);
 	
 	/*
 	auto my_w = Solve();

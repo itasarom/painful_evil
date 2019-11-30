@@ -535,7 +535,7 @@ Matrix Solve(LocalOperator &op, int max_iter, double eps=1e-6) {
 		
 		double tau = rAr/ArAr;
 		if (world_rank == 0) {
-			cerr << iter << " " << tau << endl;
+			//cerr << iter << " " << tau << endl;
 		//out << world_rank << " " << rAr << " " << ArAr << " " << tau << endl;
 		//cerr << out.str();
 		//out.str("");
@@ -549,8 +549,13 @@ Matrix Solve(LocalOperator &op, int max_iter, double eps=1e-6) {
 		if (d  < eps) {
 			break;
 		}
+
+		double delta = SyncDouble(op.Norm2(w - op.phi));
 		
-		//cout << ">> " << iter << " "  << op.Norm2(w - op.phi) << endl;
+		if (world_rank == 0) {
+			cout << ">> " << iter << " "  << op.Norm2(w - op.phi) << endl;
+		}
+		
 	}
 	MPI_Barrier(MPI_COMM_WORLD);
 
@@ -595,7 +600,7 @@ int main(int argc, char** argv) {
 	
 	LocalOperator op(my_i, my_j, N, M, block_h, block_w, X_MIN, X_MAX, Y_MIN, Y_MAX);
 	
-	auto my_w = Solve(op, 10000, 1e-6); 
+	auto my_w = Solve(op, 100, 1e-6); 
 	//PrintMatrix(my_w);
 	
 	/*

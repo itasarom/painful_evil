@@ -368,56 +368,6 @@ public:
 	
 };
 
-void SendBorder(const vector<double>& border, int dst, int me) {
-	MPI_Send(border.data(), border.size(), MPI_DOUBLE, dst, me, MPI_COMM_WORLD);
-}
-
-void RecvBorder(vector<double>& border, int src) {
-	MPI_Status status;
-	MPI_Recv(border.data(), border.size(), MPI_DOUBLE, src, src, MPI_COMM_WORLD, &status);
-}
-
-vector<double> SyncBorder(int my_i, int my_j, int other_i, int other_j, vector<double> my_border) {
-	vector<double> other_border(my_border.size());
-
-	
-	SendBorder(my_border, ComputeLatticeId(other_i, other_j), ComputeLatticeId(my_i, my_j));
-	RecvBorder(other_border, ComputeLatticeId(other_i, other_j));
-
-	return other_border;
-}
-/*
-class Block {
-	vector<double> data;
-	vector<double> border1;
-	...
-	int block_row, int block_col, int width, int height;
-
-	operator +;
-	operator -;
-	operator *;
-}
-
-
-Block Step(const Block& w, int block_row, int block_col, int width, int height) {
-	auto Aw = OperatorA(w, w.block_row, w.block_col, w.width, w.height);
-	auto rhs = RHS(w.block_row, w.block_col, w.width, w.height);
-	residual = Aw - rhs;
-	
-	auto Ar = Operator(residual, w.block_row, w.block_col, ...);
-	
-	double tau = Dot(r, Ar)/Dot(Ar, Ar);
-
-	auto new_w = w - tau*r;
-	
-	new_w.setOtherUpperBorder((SyncBorder(my_i, my_j, my_i + 1, my_j, new_w.getMyUpperBorder()));
-	
-
-
-	return new_w;
-}
-
-*/
 
 void ParseArgs(int argc, char **argv, int* N, int* M) {
 	*N = 4;
@@ -427,11 +377,60 @@ void ParseArgs(int argc, char **argv, int* N, int* M) {
 }
 
 
+void GetBorders(const Matrix& m, 
+	V& border_x0,
+	V& border_x1,
+	V& border_y0,
+	V& border_y1
+	) {
+		for (int j = 0; j < m.M; ++j) {
+			border_x0[j] = m.cat(0, j);
+		}		
+
+		for (int j = 0; j < m.M; ++j) {
+			border_x1[j] = m.cat(m.N - 1, j);
+		}		
+
+		for (int i = 0; i < m.N; ++i) {
+			border_y0[i] = m.cat(0, i);
+		}		
+
+		for (int i = 0; i < m.N; ++i) {
+			border_y1[i] = m.cat(m.M - 1, i);
+		}		
+}
+
+
+void SyncBorders(const V& s, V& r, int other_i, int other_j) {
+	int dst = 0;
+	int me = 0;
+	MPI_Send(s.data(), s.size(), MPI_DOUBLE, dst, me, MPI_COMM_WORLD);
+	MPI_Status status;
+        MPI_Recv(r.data(), r.size(), MPI_DOUBLE, dst, dst, MPI_COMM_WORLD, &status);
+} 
+
+
 Matrix Solve(LocalOperator &op, int max_iter, double eps=1e-6) {
 	Matrix w(op.block_h, op.block_w, 0.0);
+
+	V border_x0_s(op.block_w, 0);
+	V border_x1_s(op.block_w, 0);
+
+	V border_y0_s(op.block_h, 0);
+	V border_y1_s(op.block_h, 0);
+
+	V border_x0_r(op.block_w, 0);
+	V border_x1_r(op.block_w, 0);
+
+	V border_y0_r(op.block_h, 0);
+	V border_y1_r(op.block_h, 0);
 	
 	for (int iter = 0; iter < max_iter; ++iter) {
+		
+
 		auto Aw = op.Call(w);
+		
+	
 		auto r = Aw - op.rhs;
 		auto Ar = op.Call(r);
 		

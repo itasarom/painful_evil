@@ -344,11 +344,21 @@ public:
 			}
 		}
 		
+		
+		//==================
+		
 		for (int i = 0; i < block_h - 1; ++i) {
 			for (int j = 0; j < block_w; ++j) {
 				result.at(i, j) += w_ip1j_coefs.cat(i, j) * w.cat(i + 1, j);
 			}
 		}
+		
+		for (int j = 0; j < block_w; ++j) {
+			int i = block_h - 1;
+			result.at(i, j) += w_ip1j_coefs.cat(i, j) * border_x1[j];
+		}
+		
+		//==================
 
 		for (int i = 1; i < block_h; ++i) {
 			for (int j = 0; j < block_w; ++j) {
@@ -356,6 +366,12 @@ public:
 			}
 		}
 
+		for (int j = 0; j < block_w; ++j) {
+			int i = 0;
+			result.at(i, j) += w_im1j_coefs.cat(i, j) * border_x0[j];
+		}
+
+		//==================
 		for (int i = 0; i < block_h; ++i) {
 			for (int j = 0; j < block_w - 1; ++j) {
 				result.at(i, j) += w_ijp1_coefs.cat(i, j) * w.cat(i, j + 1);
@@ -363,11 +379,21 @@ public:
 		}
 
 		for (int i = 0; i < block_h; ++i) {
+			int j = block_w - 1;
+			result.at(i, j) += w_ijp1_coefs.cat(i, j) * border_y1[i];
+		}
+
+		//==================
+		for (int i = 0; i < block_h; ++i) {
 			for (int j = 1; j < block_w; ++j) {
 				result.at(i, j) += w_ijm1_coefs.cat(i, j) * w.cat(i, j - 1);
 			}
 		}
 
+		for (int i = 0; i < block_h; ++i) {
+			int j = 0;
+			result.at(i, j) += w_ijm1_coefs.cat(i, j) * border_y0[i];
+		}
 		
 
 		return result;
@@ -508,10 +534,13 @@ Matrix Solve(LocalOperator &op, int max_iter, double eps=1e-6) {
 		double rr = SyncDouble(op.Dot(r, r));
 		
 		double tau = rAr/ArAr;
+		if (world_rank == 0) {
+			cerr << iter << " " << tau << endl;
 		//out << world_rank << " " << rAr << " " << ArAr << " " << tau << endl;
 		//cerr << out.str();
 		//out.str("");
 		//out.clear();
+		}
 		
 		w = w - r * tau;
 		double d = sqrt(rr) * tau;

@@ -236,8 +236,14 @@ public:
 		h1 = (x_max - x_min)/(N - 1);
 		h2 = (y_max - y_min)/(M - 1);
 		
+		
 		my_x_min = x_min + row_pos * h1;
 		my_y_min = y_min + col_pos * h2;
+
+		out << "!!!" << world_rank << " " << h1 << " " << h2<< " "  << my_x_min << " " << my_y_min << " | " <<  block_h << " " << block_w << endl;
+		cerr << out.str();
+		out.str("");
+		out.clear();
 		
 		MeshGrid2(x_, y_, my_x_min, my_y_min, block_h, block_w, h1, h2);
 		
@@ -445,11 +451,11 @@ void GetBorders(const Matrix& m,
 		}		
 
 		for (int i = 0; i < m.N; ++i) {
-			border_y0[i] = m.cat(0, i);
+			border_y0[i] = m.cat(i, 0);
 		}		
 
 		for (int i = 0; i < m.N; ++i) {
-			border_y1[i] = m.cat(m.M - 1, i);
+			border_y1[i] = m.cat(i, m.M - 1);
 		}		
 }
 
@@ -602,7 +608,7 @@ int main(int argc, char** argv) {
 	MPI_Barrier(MPI_COMM_WORLD);
 	
 	LocalOperator op(my_i, my_j, N, M, block_h, block_w, X_MIN, X_MAX, Y_MIN, Y_MAX);
-	/*
+	
 	out << world_rank << endl;
 	for (int i = 0; i < op.block_h; ++i) {
 		for (int j = 0; j < op.block_w; ++j) {
@@ -610,11 +616,10 @@ int main(int argc, char** argv) {
 		}
 		out << endl;
 	}
-	*/
+	
 
 	//cerr << out.str();
 	
-	//return 0;
 	auto my_w = Solve(op, 100, 1e-6); 
 	//PrintMatrix(my_w);
 	

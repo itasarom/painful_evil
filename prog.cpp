@@ -274,6 +274,18 @@ public:
 			}
 		}
 
+		for (int i = 0; i < block_h; ++i) {
+			for (int j = 0; j < block_w - 1; ++j) {
+				result.at(i, j) += w_ijp1_coefs.at(i, j) * w.at(i, j + 1);
+			}
+		}
+
+		for (int i = 0; i < block_h; ++i) {
+			for (int j = 1; j < block_w; ++j) {
+				result.at(i, j) += w_ijm1_coefs.at(i, j) * w.at(i, j - 1);
+			}
+		}
+
 		
 		
 		PrintMatrix(result);

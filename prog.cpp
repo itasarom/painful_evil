@@ -223,9 +223,9 @@ protected:
 	int row_pos, col_pos;
 	double h1, h2;
 	double my_x_min, my_y_min;
-	Matrix x_, y_;
 public:
-	LocalOperator(int row_pos_, int col_pos_, int block_h_, int block_w_, int N_, int M_, double x_min, double x_max, double y_min, double y_max):
+	Matrix x_, y_;
+	LocalOperator(int row_pos_, int col_pos_, int N_, int M_,int block_h_, int block_w_,  double x_min, double x_max, double y_min, double y_max):
 		N(N_), M(M_)
 	 {
 		row_pos = row_pos_;
@@ -233,8 +233,8 @@ public:
 		block_h = block_h_;
 		block_w = block_w_;
 
-		h1 = (x_max - x_min)/(block_h - 1);
-		h2 = (y_max - y_min)/(block_w - 1);
+		h1 = (x_max - x_min)/(N - 1);
+		h2 = (y_max - y_min)/(M - 1);
 		
 		my_x_min = x_min + row_pos * h1;
 		my_y_min = y_min + col_pos * h2;
@@ -424,9 +424,9 @@ public:
 
 void ParseArgs(int argc, char **argv, int* N, int* M) {
 	*N = 4;
-	*M = 7;
-	*N = 100;
-	*M = 100;
+	*M = 4;
+	//*N = 100;
+	//*M = 100;
 }
 
 
@@ -592,14 +592,29 @@ int main(int argc, char** argv) {
 	col_pos = M / lattice_m * my_j;
 
 	
+	/*	
 	out << "My size:" << world_rank << " " << block_h << " " << block_w <<  " " << row_pos << " " << col_pos << endl;
-	//cerr << out.str();
+	cerr << out.str();
 	out.str("");
 	out.clear();
+	*/
 	
+	MPI_Barrier(MPI_COMM_WORLD);
 	
 	LocalOperator op(my_i, my_j, N, M, block_h, block_w, X_MIN, X_MAX, Y_MIN, Y_MAX);
+	/*
+	out << world_rank << endl;
+	for (int i = 0; i < op.block_h; ++i) {
+		for (int j = 0; j < op.block_w; ++j) {
+			out << op.x_.cat(i, j) << " ";
+		}
+		out << endl;
+	}
+	*/
+
+	//cerr << out.str();
 	
+	//return 0;
 	auto my_w = Solve(op, 100, 1e-6); 
 	//PrintMatrix(my_w);
 	

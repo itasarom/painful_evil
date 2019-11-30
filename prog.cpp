@@ -41,6 +41,18 @@ void ComputeBlockSize(int N, int M, int* block_h, int* block_w) {
 }
 
 using V = vector<double>;
+void PrintMatrix(const V& x, int N, int M) {
+	if (x.size() != N * M) {
+		throw "asdfasdf";
+	}
+
+	for (int i = 0; i < N; ++i) {
+		for(int j = 0; j < M; ++j) {
+			cout << x[j + i*M] << " ";
+		}
+		cout << endl;
+	}
+}
 
 V apply(function<double(double, double)> foo, const V& x, const V& y) {
 	if (x.size() != y.size()) {
@@ -67,7 +79,7 @@ double func_k(double x, double y) {
 double func_q(double x, double y) {
 
 	auto tmp = x + y;
-	return tmp * sqr(x + y);
+	return (tmp >= 0) * sqr(x + y);
 }
 
 double func_p(double x, double y) {
@@ -112,23 +124,52 @@ void MeshGrid2(V& x, V& y, double x_min, double y_min, int N, int M, double h1, 
 	for (int i = 0; i < N; ++i) {
 		for (int j = 0; j < M; ++j) {
 			x[j + M * i] = x_min + i * h1;
-			y[i + N * j] = y_min + j * h2;
 		}
-	}
-}
-
-void PrintMatrix(const V& x, int N, int M) {
-	if (x.size() != N * M) {
-		throw "asdfasdf";
 	}
 
 	for (int i = 0; i < N; ++i) {
-		for(int j = 0; j < M; ++j) {
-			cout << x[j + i*M] << " ";
+		for (int j = 0; j < M; ++j) {
+			y[j + M * i] = y_min + j * h2;
 		}
-		cout << endl;
 	}
+
+
+
 }
+
+V operator + (const V& a, const V& b) {
+	if (a.size() != b.size()) {
+		throw "SDFSDFS";
+	}
+
+	V result(a.size());
+	for (size_t i = 0; i < a.size(); ++i) {
+		result[i] = a[i] + b[i];
+	}
+
+	return result;
+}
+
+V operator * (const V& a, double num) {
+
+	V result(a.size());
+	for (size_t i = 0; i < a.size(); ++i) {
+		result[i] = a[i] * num;
+	}
+
+	return result;
+}
+
+V operator / (const V& a, double num) {
+
+	V result(a.size());
+	for (size_t i = 0; i < a.size(); ++i) {
+		result[i] = a[i] / num;
+	}
+
+	return result;
+}
+
 
 class LocalOperator {
 public:
@@ -156,9 +197,40 @@ public:
 		
 		MeshGrid2(x_, y_, my_x_min, my_y_min, block_h, block_w, h1, h2);
 		
-		PrintMatrix(x_, block_h, block_w);
-		PrintMatrix(y_, block_h, block_w);
+
+
+		BuildLhs();
 	 }
+
+	void BuildLhs() {
+		V w_ij_coefs(x_.size());
+		V w_ip1j_coefs(x_.size());
+		V w_im1j_coefs(x_.size());
+		V w_ijp1_coefs(x_.size());
+		V w_ijm1_coefs(x_.size());
+
+		cout << h1 << " " << h2 << endl;
+		cout << "=========\n";
+		
+
+		for (int i = 0; i < block_h; ++i) {
+			for (int j = 0; j < block_w; ++j) {
+				int pos = j + i * M;
+				w_ij_coefs[pos] = 
+(func_k(x_[pos] + 0.5 * h1, y_[pos]) +  func_k(x_[pos] - 0.5 * h1, y_[pos]))/sqr(h1) + 
+(func_k(x_[pos], y_[pos] + 0.5 * h2) +  func_k(x_[pos], y_[pos] - 0.5 * h2))/sqr(h2) + func_q(x_[pos], y_[pos]);
+		
+				w_ip1j_coefs[pos] = -func_k(x_[pos] + 0.5 * h1, y_[pos])/sqr(h1);
+				w_im1j_coefs[pos] = -func_k(x_[pos] - 0.5 * h1, y_[pos])/sqr(h1);
+				w_ijp1_coefs[pos] = -func_k(x_[pos], y_[pos] + 0.5 * h2)/sqr(h2);
+				w_ijm1_coefs[pos] = -func_k(x_[pos], y_[pos] - 0.5 * h2)/sqr(h2);
+			}
+		} 
+		PrintMatrix(w_ij_coefs, block_h, block_w);
+
+
+ 
+	}
 };
 
 void SendBorder(const vector<double>& border, int dst, int me) {
@@ -213,8 +285,8 @@ Block Step(const Block& w, int block_row, int block_col, int width, int height) 
 */
 
 void ParseArgs(int argc, char **argv, int* N, int* M) {
-	*N = 10;
-	*M = 10;
+	*N = 4;
+	*M = 7;
 }
 
 const double X_MIN = -1, X_MAX = 2;

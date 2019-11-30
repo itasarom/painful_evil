@@ -3,6 +3,7 @@
 #include <iostream>
 #include <vector>
 #include <functional>
+#include <sstream>
 
 using namespace std;
 
@@ -28,17 +29,41 @@ int ComputeLatticeId(int i, int j) {
 
 void ComputeLatticeCoord(int id, int* i, int* j) {
 	*j = id % lattice_m;
-	*i = id / lattice_n;
+	*i = id / lattice_m;
 }
 
 void GetLatticeParams() {
 	lattice_n = 1;
-	lattice_m = 1;
+	for (int z = 1; z <= sqrt(world_size); ++z) {
+		if (world_size % z == 0) {
+			lattice_n = max(lattice_n, z);
+		}
+	}
+	
+	lattice_m = world_size / lattice_n;
 }
 
 void ComputeBlockSize(int N, int M, int* block_h, int* block_w) {
-	*block_h = N;
-	*block_w = M;
+	if (N % lattice_n == 0) {
+		*block_h = N/lattice_n;
+	} else {
+		if (my_i == lattice_n - 1) {
+			*block_h = N -  N/lattice_n * (lattice_n - 1);
+		} else {
+			*block_h = N / lattice_n;
+		}	
+	}
+
+	if (M % lattice_m == 0) {
+		*block_w = M/lattice_m;
+	} else {
+		if (my_j == lattice_m - 1) {
+			*block_w = M -  M/lattice_m * (lattice_m - 1);
+		} else {
+			*block_w = M / lattice_m;
+		}	
+	}
+
 }
 
 using V = vector<double>;
@@ -464,6 +489,7 @@ Matrix Solve(LocalOperator &op, int max_iter, double eps=1e-6) {
 
 const double X_MIN = -1, X_MAX = 2;
 const double Y_MIN = -2, Y_MAX = 2;
+stringstream out;
 
 int main(int argc, char** argv) {
 	MPI_Init(&argc, &argv);
@@ -474,12 +500,26 @@ int main(int argc, char** argv) {
 	int N, M;
 	ParseArgs(argc, argv, &N, &M);
 	GetLatticeParams();
+	if (world_rank == 0) {
+		cerr <<  "Lattice params:" << lattice_n << " " << lattice_m << endl;
+	}
 
 	int block_h, block_w;
 	
 	ComputeLatticeCoord(world_rank, &my_i, &my_j);
+	out << "Lattice coord:" << world_rank << " " << my_i << " " << my_j << endl;
+	cerr << out.str();
+	out.clear();
+
 	ComputeBlockSize(N, M, &block_h, &block_w);
+
 	
+	out << "My size:" << world_rank << " " << block_h << " " << block_w << endl;
+	cerr << out.str();
+	out.clear();
+	
+	
+	return 0;
 	LocalOperator op(my_i, my_j, N, M, block_h, block_w, X_MIN, X_MAX, Y_MIN, Y_MAX);
 	
 	auto my_w = Solve(op, 10000, 1e-6); 

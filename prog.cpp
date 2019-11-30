@@ -226,7 +226,7 @@ public:
 				w_ijm1_coefs[pos] = -func_k(x_[pos], y_[pos] - 0.5 * h2)/sqr(h2);
 			}
 		} 
-		PrintMatrix(w_ij_coefs, block_h, block_w);
+		PrintMatrix(w_ijm1_coefs, block_h, block_w);
 
 
  

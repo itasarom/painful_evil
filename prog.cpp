@@ -8,6 +8,7 @@
 using namespace std;
 
 
+stringstream out;
 int world_rank;
 int world_size;
 
@@ -16,11 +17,11 @@ int lattice_m;
 int my_i, my_j;
 
 int ComputeLatticeId(int i, int j) {
-	if (i > lattice_n) {
+	if (i < 0 || i > lattice_n) {
 		throw "DFSDFSDF";
 	}
 
-	if (j > lattice_m) {
+	if (j < 0 || j > lattice_m) {
 		throw "AAAAAAA";
 	}
 
@@ -63,6 +64,7 @@ void ComputeBlockSize(int N, int M, int* block_h, int* block_w) {
 			*block_w = M / lattice_m;
 		}	
 	}
+
 
 }
 
@@ -223,11 +225,11 @@ protected:
 	double my_x_min, my_y_min;
 	Matrix x_, y_;
 public:
-	LocalOperator(int my_i, int my_j, int block_h_, int block_w_, int N_, int M_, double x_min, double x_max, double y_min, double y_max):
+	LocalOperator(int row_pos_, int col_pos_, int block_h_, int block_w_, int N_, int M_, double x_min, double x_max, double y_min, double y_max):
 		N(N_), M(M_)
 	 {
-		row_pos = my_i;
-		col_pos = my_j;
+		row_pos = row_pos_;
+		col_pos = col_pos_;
 		block_h = block_h_;
 		block_w = block_w_;
 
@@ -429,13 +431,33 @@ void GetBorders(const Matrix& m,
 
 void SyncBorder(const V& s, V& r, int other_i, int other_j) {
 	
+	if (other_i < 0 || other_i >= lattice_n) {
+		r.resize(r.size(), 0.0);
+		return;
+	}	
 
-	int dst = 0;
-	int me = 0;
+	if (other_j < 0 || other_j >= lattice_m) {
+		r.resize(r.size(), 0.0);
+		return;
+	}	
 
-	MPI_Send(s.data(), s.size(), MPI_DOUBLE, dst, me, MPI_COMM_WORLD);
+
+
+	int me = world_rank;
+	int dst = ComputeLatticeId(other_i, other_j);
+
+	out << "to sync" <<  dst << " " << me << " " << endl;
+	cerr << out.str();
+	out.clear();
+	
+	cerr << "Sync\n";
+
+	MPI_Send(s.data(), s.size(), MPI_DOUBLE, dst, 0, MPI_COMM_WORLD);
 	MPI_Status status;
-        MPI_Recv(r.data(), r.size(), MPI_DOUBLE, dst, dst, MPI_COMM_WORLD, &status);
+        MPI_Recv(r.data(), r.size(), MPI_DOUBLE, dst, 0, MPI_COMM_WORLD, &status);
+	out << "OK" <<  dst << " " << me << " " << endl;
+	cerr << out.str();
+	out.clear();
 } 
 
 
@@ -460,7 +482,7 @@ Matrix Solve(LocalOperator &op, int max_iter, double eps=1e-6) {
 		SyncBorder(border_x0_s, border_x0_r, my_i - 1, my_j);
 		SyncBorder(border_x1_s, border_x1_r, my_i + 1, my_j);
 		SyncBorder(border_y0_s, border_y0_r, my_i, my_j - 1);
-		SyncBorder(border_y1_s, border_y1_r, my_i - 1, my_j + 1);
+		SyncBorder(border_y1_s, border_y1_r, my_i, my_j + 1);
 		
 
 		auto Aw = op.Call(w);
@@ -481,15 +503,15 @@ Matrix Solve(LocalOperator &op, int max_iter, double eps=1e-6) {
 			break;
 		}
 		
-		cout << ">> " << iter << " "  << op.Norm2(w - op.phi) << endl;
+		//cout << ">> " << iter << " "  << op.Norm2(w - op.phi) << endl;
 	}
+	MPI_Barrier(MPI_COMM_WORLD);
 
 	return w;
 }
 
 const double X_MIN = -1, X_MAX = 2;
 const double Y_MIN = -2, Y_MAX = 2;
-stringstream out;
 
 int main(int argc, char** argv) {
 	MPI_Init(&argc, &argv);
@@ -508,18 +530,22 @@ int main(int argc, char** argv) {
 	
 	ComputeLatticeCoord(world_rank, &my_i, &my_j);
 	out << "Lattice coord:" << world_rank << " " << my_i << " " << my_j << endl;
-	cerr << out.str();
+	//cerr << out.str();
+	out.str("");
 	out.clear();
 
 	ComputeBlockSize(N, M, &block_h, &block_w);
+	int row_pos, col_pos;
+	row_pos = N / lattice_n * my_i;
+	col_pos = M / lattice_m * my_j;
 
 	
-	out << "My size:" << world_rank << " " << block_h << " " << block_w << endl;
-	cerr << out.str();
+	out << "My size:" << world_rank << " " << block_h << " " << block_w <<  " " << row_pos << " " << col_pos << endl;
+	//cerr << out.str();
+	out.str("");
 	out.clear();
 	
 	
-	return 0;
 	LocalOperator op(my_i, my_j, N, M, block_h, block_w, X_MIN, X_MAX, Y_MIN, Y_MAX);
 	
 	auto my_w = Solve(op, 10000, 1e-6); 
@@ -534,6 +560,7 @@ int main(int argc, char** argv) {
 		DoIOStuff();
 	}
 	*/
+	throw "SDFSDFSDF";
 
 	MPI_Finalize();
 }

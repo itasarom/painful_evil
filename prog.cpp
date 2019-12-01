@@ -5,6 +5,7 @@
 #include <functional>
 #include <sstream>
 #include <string>
+#include <cstdlib>
 
 using namespace std;
 
@@ -69,7 +70,7 @@ void ComputeBlockSize(int N, int M, int* block_h, int* block_w) {
 
 }
 
-using V = vector<double>;
+typedef vector<double> V;
 
 struct Matrix {
 	V data;
@@ -83,7 +84,8 @@ struct Matrix {
 	Matrix(int N_, int M_, double fill=0.0): data(N_ * M_, fill), N(N_), M(M_) {
 	}
 	
-	Matrix() = default;
+	Matrix() {
+	}
 	double& operator[] (int i) {
 		return data[i];
 	}
@@ -170,7 +172,7 @@ double func_k(double x, double y) {
 
 double func_q(double x, double y) {
 
-	auto tmp = x + y;
+	double tmp = x + y;
 	return (tmp >= 0) * sqr(x + y);
 }
 
@@ -182,10 +184,12 @@ double func_u(double x, double y) {
 	return exp(1 - sqr(x + y));
 }
 
-auto func_phi = func_u;
+double func_phi(double x, double y) {
+	return func_u(x, y);
+}
 
 double func_F(double x, double y) {
-	auto inner = (-2 * (sqr(func_p(x, y)) - 2) * func_k(x, y) - func_p(x, y)  + func_q(x, y));
+	double inner = (-2 * (sqr(func_p(x, y)) - 2) * func_k(x, y) - func_p(x, y)  + func_q(x, y));
 
 	return func_u(x, y) * inner;
 }
@@ -442,8 +446,8 @@ public:
 
 
 void ParseArgs(int argc, char **argv, int* N, int* M) {
-	*N = stoi(argv[1]);
-	*M = stoi(argv[2]);
+	*N = atoi(argv[1]);
+	*M = atoi(argv[2]);
 }
 
 
@@ -527,18 +531,18 @@ Matrix Solve(LocalOperator &op, int max_iter, double eps=1e-6) {
 		SyncBorder(border_y1_s, border_y1_r, my_i, my_j + 1);
 		
 
-		auto Aw = op.Call(w, border_x0_r, border_x1_r, border_y0_r, border_y1_r);
+		Matrix Aw = op.Call(w, border_x0_r, border_x1_r, border_y0_r, border_y1_r);
 		
 		
 	
-		auto r = Aw - op.rhs;
+		Matrix r = Aw - op.rhs;
 		GetBorders(r, border_x0_s, border_x1_s, border_y0_s, border_y1_s);
 	
 		SyncBorder(border_x0_s, border_x0_r, my_i - 1, my_j);
 		SyncBorder(border_x1_s, border_x1_r, my_i + 1, my_j);
 		SyncBorder(border_y0_s, border_y0_r, my_i, my_j - 1);
 		SyncBorder(border_y1_s, border_y1_r, my_i, my_j + 1);
-		auto Ar = op.Call(r, border_x0_r, border_x1_r, border_y0_r, border_y1_r);
+		Matrix Ar = op.Call(r, border_x0_r, border_x1_r, border_y0_r, border_y1_r);
 
 		
 		
@@ -608,7 +612,7 @@ int main(int argc, char** argv) {
 	
 	LocalOperator op(row_pos, col_pos, N, M, block_h, block_w, X_MIN, X_MAX, Y_MIN, Y_MAX);
 	
-	auto my_w = Solve(op, 10000000, 1e-6); 
+	Matrix my_w = Solve(op, 10000000, 1e-6); 
 
 	MPI_Finalize();
 }

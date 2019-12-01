@@ -450,8 +450,8 @@ public:
 void ParseArgs(int argc, char **argv, int* N, int* M) {
 	//*N = 4;
 	//*M = 4;
-	*N = 100;
-	*M = 100;
+	*N = 1000;
+	*M = 1000;
 }
 
 
@@ -682,7 +682,7 @@ int main(int argc, char** argv) {
 
 	cerr << out.str();
 	*/
-	auto my_w = Solve(op, 10000, 1e-6); 
+	auto my_w = Solve(op, 39059, 1e-6); 
 	//PrintMatrix(my_w);
 	
 	/*

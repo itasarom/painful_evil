@@ -17,11 +17,11 @@ int lattice_m;
 int my_i, my_j;
 
 int ComputeLatticeId(int i, int j) {
-	if (i < 0 || i > lattice_n) {
+	if (i < 0 || i >= lattice_n) {
 		throw "DFSDFSDF";
 	}
 
-	if (j < 0 || j > lattice_m) {
+	if (j < 0 || j >= lattice_m) {
 		throw "AAAAAAA";
 	}
 
@@ -358,6 +358,9 @@ public:
 				result.at(i, j) += w_ip1j_coefs.cat(i, j) * w.cat(i + 1, j);
 			}
 		}
+		if (border_x1.size() != block_w) {
+			throw "asdasdfa";
+		}
 		
 		for (int j = 0; j < block_w; ++j) {
 			int i = block_h - 1;
@@ -371,6 +374,9 @@ public:
 				result.at(i, j) += w_im1j_coefs.cat(i, j) * w.cat(i - 1, j);
 			}
 		}
+		if (border_x0.size() != block_w) {
+			throw "asdasdfa";
+		}
 
 		for (int j = 0; j < block_w; ++j) {
 			int i = 0;
@@ -383,6 +389,9 @@ public:
 				result.at(i, j) += w_ijp1_coefs.cat(i, j) * w.cat(i, j + 1);
 			}
 		}
+		if (border_y1.size() != block_h) {
+			throw "asdasdfa";
+		}
 
 		for (int i = 0; i < block_h; ++i) {
 			int j = block_w - 1;
@@ -394,6 +403,10 @@ public:
 			for (int j = 1; j < block_w; ++j) {
 				result.at(i, j) += w_ijm1_coefs.cat(i, j) * w.cat(i, j - 1);
 			}
+		}
+		
+		if (border_y0.size() != block_h) {
+			throw "asdasdfa";
 		}
 
 		for (int i = 0; i < block_h; ++i) {
@@ -476,19 +489,35 @@ void SyncBorder(const V& s, V& r, int other_i, int other_j) {
 
 	int me = world_rank;
 	int dst = ComputeLatticeId(other_i, other_j);
-
-	//out << "to sync" <<  dst << " " << me << " " << endl;
-	//cerr << out.str();
-	//out.clear();
+	
+	/*
+	out << "to sync from " <<  me << " to  " << dst << " " << endl;
+	for (auto it: s) {
+		out << it << " ";
+	}
+	out << "\n----------" << endl;
+	cerr << out.str();
+	out.str("");
+	out.clear();
+	*/
 	
 	//cerr << "Sync\n";
 
 	MPI_Send(s.data(), s.size(), MPI_DOUBLE, dst, 0, MPI_COMM_WORLD);
 	MPI_Status status;
+	
         MPI_Recv(r.data(), r.size(), MPI_DOUBLE, dst, 0, MPI_COMM_WORLD, &status);
-	//out << "OK" <<  dst << " " << me << " " << endl;
-	//cerr << out.str();
-	//out.clear();
+	
+	/*
+	out << "OK from " <<  dst << " to " << me << " " << endl;
+	for (auto it: r) {
+		out << it << " ";
+	}
+	out << "\n==========" << endl;
+	
+	cerr << out.str();
+	out.clear();
+	*/
 } 
 
 double SyncDouble(double value) {
@@ -524,6 +553,7 @@ Matrix Solve(LocalOperator &op, int max_iter, double eps=1e-6) {
 
 		auto Aw = op.Call(w, border_x0_r, border_x1_r, border_y0_r, border_y1_r);
 		
+		//cerr << "~~~~~~~~~~~~~~~~~~~\n";
 		
 	
 		auto r = Aw - op.rhs;
@@ -539,7 +569,8 @@ Matrix Solve(LocalOperator &op, int max_iter, double eps=1e-6) {
 		double ArAr = SyncDouble(op.Dot(Ar, Ar));
 		double rr = SyncDouble(op.Dot(r, r));
 		
-		double tau = rAr/ArAr;
+		//double tau = rAr/ArAr;
+		double tau = 0.005;
 		if (world_rank == 0) {
 			//cerr << iter << " " << tau << endl;
 		//out << world_rank << " " << rAr << " " << ArAr << " " << tau << endl;
@@ -559,7 +590,7 @@ Matrix Solve(LocalOperator &op, int max_iter, double eps=1e-6) {
 		double delta = SyncDouble(op.Norm2(w - op.phi));
 		
 		if (world_rank == 0) {
-			cout << ">> " << iter << " "  << op.Norm2(w - op.phi) << endl;
+		//	cout << ">> " << iter << " "  << delta  << endl;
 		}
 		
 	}
@@ -622,7 +653,7 @@ int main(int argc, char** argv) {
 
 	cerr << out.str();
 	
-	auto my_w = Solve(op, 100, 1e-6); 
+	auto my_w = Solve(op, 1, 1e-6); 
 	//PrintMatrix(my_w);
 	
 	/*

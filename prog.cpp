@@ -611,8 +611,15 @@ int main(int argc, char** argv) {
 	MPI_Barrier(MPI_COMM_WORLD);
 	
 	LocalOperator op(row_pos, col_pos, N, M, block_h, block_w, X_MIN, X_MAX, Y_MIN, Y_MAX);
-	
+	double start_time = MPI_Wtime();
+
 	Matrix my_w = Solve(op, 10000000, 1e-6); 
+	double total_time = MPI_Wtime() - start_time;
+	
+	if (world_rank == 0) {
+		out << "Time " << total_time << endl;
+		cerr << out.str();
+	}
 
 	MPI_Finalize();
 }

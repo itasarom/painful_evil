@@ -1,4 +1,5 @@
 #include "mpi.h"
+#include <omp.h>
 #include <math.h>
 #include <iostream>
 #include <vector>
@@ -111,7 +112,9 @@ struct Matrix {
 	Matrix operator - (const Matrix& other) const {
 		Matrix result(N, M);
 		
+		#pragma omp parallel for
 		for (int i = 0; i < N; ++i) {
+			#pragma omp parallel for
 			for (int j = 0; j < M; ++j) {
 				result.at(i, j) = cat(i, j) - other.cat(i, j);
 			}
@@ -123,7 +126,9 @@ struct Matrix {
 	Matrix operator + (const Matrix& other) const {
 		Matrix result(N, M);
 		
+		#pragma omp parallel for
 		for (int i = 0; i < N; ++i) {
+			#pragma omp parallel for
 			for (int j = 0; j < M; ++j) {
 				result.at(i, j) = cat(i, j) + other.cat(i, j);
 			}
@@ -136,7 +141,9 @@ struct Matrix {
 	Matrix operator * (double num) const {
 		Matrix result(N, M);
 		
+		#pragma omp parallel for
 		for (int i = 0; i < N; ++i) {
+			#pragma omp parallel for
 			for (int j = 0; j < M; ++j) {
 				result.at(i, j) = cat(i, j) * num;
 			}
@@ -286,7 +293,9 @@ public:
 	void BuildRhs() {
 		phi.reset(block_h, block_w);
 
+		#pragma omp parallel for
 		for (int i = 0; i < block_h; ++i) {
+			#pragma omp parallel for
 			for (int j = 0; j < block_w; ++j) {
 				phi.at(i, j) = func_phi(x_.at(i, j),  y_.at(i, j));
 			}
@@ -295,13 +304,16 @@ public:
 		
 		rhs.reset(block_h, block_w);
 		
+		#pragma omp parallel for
 		for (int i = 0; i < block_h; ++i) {
+			#pragma omp parallel for
 			for (int j = 0; j < block_w; ++j) {
 				rhs.at(i, j) = func_F(x_.at(i, j), y_.at(i,j));
 			}
 		}
 
 		if (row_pos == 0) {
+			#pragma omp parallel for
 			for (int j = 0; j < block_w; ++j) {
 				int i = 0;
 				rhs.at(i, j) -= func_phi(x_.at(i, j) - h1,  y_.at(i, j)) * w_im1j_coefs.at(i, j);
@@ -309,6 +321,7 @@ public:
 		}
 
 		if (row_pos + block_h == N) {
+			#pragma omp parallel for
 			for (int j = 0; j < block_w; ++j) {
 				int i = block_h - 1;
 				rhs.at(i, j) -= func_phi(x_.at(i, j) + h1,  y_.at(i, j)) * w_ip1j_coefs.at(i, j);
@@ -317,6 +330,7 @@ public:
 		}
 
 		if (col_pos == 0) {
+			#pragma omp parallel for
 			for (int i = 0; i < block_h; ++i) {
 				int j = 0;
 				rhs.at(i, j) -= func_phi(x_.at(i, j),  y_.at(i, j) - h2) * w_ijm1_coefs.at(i, j);
@@ -324,6 +338,7 @@ public:
 		}
 
 		if (col_pos + block_w == M) {
+			#pragma omp parallel for
 			for (int i = 0; i < block_h; ++i) {
 				int j = block_w - 1;
 				rhs.at(i, j) -= func_phi(x_.at(i, j),  y_.at(i, j) + h2) * w_ijp1_coefs.at(i, j);
@@ -342,7 +357,9 @@ public:
 		
 		Matrix result(w.N, w.M);
 		
+		#pragma omp parallel for
 		for (int i = 0; i < block_h; ++i) {
+			#pragma omp parallel for
 			for (int j = 0; j < block_w; ++j) {
 				result.at(i, j) = w_ij_coefs.cat(i, j) * w.cat(i, j);
 			}
@@ -351,7 +368,9 @@ public:
 		
 		//==================
 		
+		#pragma omp parallel for
 		for (int i = 0; i < block_h - 1; ++i) {
+			#pragma omp parallel for
 			for (int j = 0; j < block_w; ++j) {
 				result.at(i, j) += w_ip1j_coefs.cat(i, j) * w.cat(i + 1, j);
 			}
@@ -360,6 +379,7 @@ public:
 			throw "asdasdfa";
 		}
 		
+		#pragma omp parallel for
 		for (int j = 0; j < block_w; ++j) {
 			int i = block_h - 1;
 			result.at(i, j) += w_ip1j_coefs.cat(i, j) * border_x1[j];
@@ -367,7 +387,9 @@ public:
 		
 		//==================
 
+		#pragma omp parallel for
 		for (int i = 1; i < block_h; ++i) {
+			#pragma omp parallel for
 			for (int j = 0; j < block_w; ++j) {
 				result.at(i, j) += w_im1j_coefs.cat(i, j) * w.cat(i - 1, j);
 			}
@@ -376,13 +398,16 @@ public:
 			throw "asdasdfa";
 		}
 
+		#pragma omp parallel for
 		for (int j = 0; j < block_w; ++j) {
 			int i = 0;
 			result.at(i, j) += w_im1j_coefs.cat(i, j) * border_x0[j];
 		}
 
 		//==================
+		#pragma omp parallel for
 		for (int i = 0; i < block_h; ++i) {
+			#pragma omp parallel for
 			for (int j = 0; j < block_w - 1; ++j) {
 				result.at(i, j) += w_ijp1_coefs.cat(i, j) * w.cat(i, j + 1);
 			}
@@ -391,13 +416,16 @@ public:
 			throw "asdasdfa";
 		}
 
+		#pragma omp parallel for
 		for (int i = 0; i < block_h; ++i) {
 			int j = block_w - 1;
 			result.at(i, j) += w_ijp1_coefs.cat(i, j) * border_y1[i];
 		}
 
 		//==================
+		#pragma omp parallel for
 		for (int i = 0; i < block_h; ++i) {
+			#pragma omp parallel for
 			for (int j = 1; j < block_w; ++j) {
 				result.at(i, j) += w_ijm1_coefs.cat(i, j) * w.cat(i, j - 1);
 			}
@@ -407,6 +435,7 @@ public:
 			throw "asdasdfa";
 		}
 
+		#pragma omp parallel for
 		for (int i = 0; i < block_h; ++i) {
 			int j = 0;
 			result.at(i, j) += w_ijm1_coefs.cat(i, j) * border_y0[i];
@@ -424,7 +453,9 @@ public:
 		if (b.N != block_h || b.M != block_w) {
 			throw "asdfasd";
 		}
+		#pragma omp parallel for
 		for (int i = 0; i < block_h; ++i) {
+			#pragma omp parallel for
 			for (int j = 0; j < block_w; ++j) {
 				result += a.cat(i,j) * b.cat(i, j);
 			}
@@ -611,8 +642,16 @@ int main(int argc, char** argv) {
 	MPI_Barrier(MPI_COMM_WORLD);
 	
 	LocalOperator op(row_pos, col_pos, N, M, block_h, block_w, X_MIN, X_MAX, Y_MIN, Y_MAX);
+	double start_time = MPI_Wtime();
 	
 	Matrix my_w = Solve(op, 10000000, 1e-6); 
+	double total_time = MPI_Wtime() - start_time;
+	
+	if (world_rank == 0) {
+		out << "Time " << total_time << endl;
+		cerr << out.str();
+	}
+	
 
 	MPI_Finalize();
 }

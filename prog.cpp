@@ -475,7 +475,7 @@ void GetBorders(const Matrix& m,
 }
 
 
-void SyncBorder(const V& s, V& r, int other_i, int other_j) {
+void SyncBorder(V& s, V& r, int other_i, int other_j) {
 	
 	if (other_i < 0 || other_i >= lattice_n) {
 		r.resize(r.size(), 0.0);

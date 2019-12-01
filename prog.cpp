@@ -569,8 +569,8 @@ Matrix Solve(LocalOperator &op, int max_iter, double eps=1e-6) {
 		double ArAr = SyncDouble(op.Dot(Ar, Ar));
 		double rr = SyncDouble(op.Dot(r, r));
 		
-		//double tau = rAr/ArAr;
-		double tau = 0.005;
+		double tau = rAr/ArAr;
+		//double tau = 0.005;
 		if (world_rank == 0) {
 			//cerr << iter << " " << tau << endl;
 		//out << world_rank << " " << rAr << " " << ArAr << " " << tau << endl;
@@ -590,7 +590,7 @@ Matrix Solve(LocalOperator &op, int max_iter, double eps=1e-6) {
 		double delta = SyncDouble(op.Norm2(w - op.phi));
 		
 		if (world_rank == 0) {
-		//	cout << ">> " << iter << " "  << delta  << endl;
+			cout << ">> " << iter << " "  << delta  << endl;
 		}
 		
 	}
@@ -644,7 +644,7 @@ int main(int argc, char** argv) {
 	out <<"Rank" <<  world_rank << endl;
 	for (int i = 0; i < op.block_h; ++i) {
 		for (int j = 0; j < op.block_w; ++j) {
-			out << op.x_.cat(i, j) << " ";
+			out << op.phi.cat(i, j) << " ";
 		}
 		out << endl;
 	}
@@ -653,7 +653,7 @@ int main(int argc, char** argv) {
 
 	cerr << out.str();
 	
-	auto my_w = Solve(op, 1, 1e-6); 
+	auto my_w = Solve(op, 10, 1e-6); 
 	//PrintMatrix(my_w);
 	
 	/*

@@ -448,10 +448,10 @@ public:
 
 
 void ParseArgs(int argc, char **argv, int* N, int* M) {
-	*N = 4;
-	*M = 4;
-	//*N = 100;
-	//*M = 100;
+	//*N = 4;
+	//*M = 4;
+	*N = 100;
+	*M = 100;
 }
 
 
@@ -595,14 +595,17 @@ Matrix Solve(LocalOperator &op, int max_iter, double eps=1e-6) {
 		
 		double tau = rAr/ArAr;
 		//double tau = 0.005;
+		/*	
 		if (world_rank == 0) {
 			//cerr << iter << " " << tau << endl;
-		out << "!!! " <<  world_rank << " " << rAr << " " << ArAr << " " << tau << endl;
+		out << "!!! " <<  iter << " " << rAr << " " << ArAr << " " << tau << endl;
 		//out << "rr " <<  world_rank << " " << sqrt(rr) << endl;
 		cerr << out.str();
 		out.str("");
 		out.clear();
 		}
+		*/
+		
 		
 		w = w - r * tau;
 		double d = sqrt(rr) * tau;
@@ -679,7 +682,7 @@ int main(int argc, char** argv) {
 
 	cerr << out.str();
 	*/
-	auto my_w = Solve(op, 2, 1e-6); 
+	auto my_w = Solve(op, 10000, 1e-6); 
 	//PrintMatrix(my_w);
 	
 	/*

@@ -4,6 +4,7 @@
 #include <vector>
 #include <functional>
 #include <sstream>
+#include <string>
 
 using namespace std;
 
@@ -147,18 +148,18 @@ struct Matrix {
 };
 
 
-void PrintMatrix(Matrix& m) {
+void PrintMatrix(const Matrix& m) {
 
+	stringstream out;
 	for (int i = 0; i < m.N; ++i) {
 		for(int j = 0; j < m.M; ++j) {
-			cout << m.at(i, j) << " ";
+			out << m.cat(i, j) << " ";
 		}
-		cout << endl;
+		out << endl;
 	}
+		
+	cout << out.str();
 }
-
-
-
 double sqr(double x) {
 	return x*x;
 }
@@ -240,10 +241,6 @@ public:
 		my_x_min = x_min + row_pos * h1;
 		my_y_min = y_min + col_pos * h2;
 
-		out << "!!!" << world_rank << " " << h1 << " " << h2<< " "  << my_x_min << " " << my_y_min << " | " <<  block_h << " " << block_w << endl;
-		cerr << out.str();
-		out.str("");
-		out.clear();
 		
 		MeshGrid2(x_, y_, my_x_min, my_y_min, block_h, block_w, h1, h2);
 		
@@ -262,9 +259,6 @@ public:
 		w_ijp1_coefs.reset(block_h, block_w);
 		w_ijm1_coefs.reset(block_h, block_w);
 
-		cout << h1 << " " << h2 << endl;
-		cout << "=========\n";
-		
 
 		for (int i = 0; i < block_h; ++i) {
 			for (int j = 0; j < block_w; ++j) {
@@ -448,10 +442,8 @@ public:
 
 
 void ParseArgs(int argc, char **argv, int* N, int* M) {
-	//*N = 4;
-	//*M = 4;
-	*N = 1000;
-	*M = 1000;
+	*N = stoi(argv[1]);
+	*M = stoi(argv[2]);
 }
 
 
@@ -496,34 +488,12 @@ void SyncBorder(const V& s, V& r, int other_i, int other_j) {
 	int me = world_rank;
 	int dst = ComputeLatticeId(other_i, other_j);
 	
-	/*
-	out << "to sync from " <<  me << " to  " << dst << " " << endl;
-	for (auto it: s) {
-		out << it << " ";
-	}
-	out << "\n----------" << endl;
-	cerr << out.str();
-	out.str("");
-	out.clear();
-	*/
-	
-	//cerr << "Sync\n";
 
 	MPI_Send(s.data(), s.size(), MPI_DOUBLE, dst, 0, MPI_COMM_WORLD);
 	MPI_Status status;
 	
         MPI_Recv(r.data(), r.size(), MPI_DOUBLE, dst, 0, MPI_COMM_WORLD, &status);
 	
-	/*
-	out << "OK from " <<  dst << " to " << me << " " << endl;
-	for (auto it: r) {
-		out << it << " ";
-	}
-	out << "\n==========" << endl;
-	
-	cerr << out.str();
-	out.clear();
-	*/
 } 
 
 double SyncDouble(double value) {
@@ -559,7 +529,6 @@ Matrix Solve(LocalOperator &op, int max_iter, double eps=1e-6) {
 
 		auto Aw = op.Call(w, border_x0_r, border_x1_r, border_y0_r, border_y1_r);
 		
-		//cerr << "~~~~~~~~~~~~~~~~~~~\n";
 		
 	
 		auto r = Aw - op.rhs;
@@ -572,21 +541,6 @@ Matrix Solve(LocalOperator &op, int max_iter, double eps=1e-6) {
 		auto Ar = op.Call(r, border_x0_r, border_x1_r, border_y0_r, border_y1_r);
 
 		
-		/*
-		if (iter == 0) {
-		out <<"Rank" <<  world_rank << endl;
-		for (int i = 0; i < op.block_h; ++i) {
-			for (int j = 0; j < op.block_w; ++j) {
-				out << Ar.cat(i, j) << " ";
-			}
-			out << endl;
-		}
-		out << "=============\n";
-		cerr << out.str();
-		out.str("");
-		out.clear();
-		}
-		*/
 		
 		
 		double rAr = SyncDouble(op.Dot(r, Ar));
@@ -594,32 +548,30 @@ Matrix Solve(LocalOperator &op, int max_iter, double eps=1e-6) {
 		double rr = SyncDouble(op.Dot(r, r));
 		
 		double tau = rAr/ArAr;
-		//double tau = 0.005;
-		/*	
-		if (world_rank == 0) {
-			//cerr << iter << " " << tau << endl;
-		out << "!!! " <<  iter << " " << rAr << " " << ArAr << " " << tau << endl;
-		//out << "rr " <<  world_rank << " " << sqrt(rr) << endl;
-		cerr << out.str();
-		out.str("");
-		out.clear();
-		}
-		*/
 		
 		
 		w = w - r * tau;
 		double d = sqrt(rr) * tau;
+		double delta = SyncDouble(op.Norm2(w - op.phi));
+		
+		if (world_rank == 0) {
+			out << iter << "\t";
+			out << sqrt(rr) << "\t";
+			out << d << "\t";
+			out << sqrt(delta) << "\t";
+			out << tau;
+			out << endl;
+			cout << out.str();
+			out.str("");
+			out.clear();
+		}
 
 
 		if (d  < eps) {
 			break;
 		}
 
-		double delta = SyncDouble(op.Norm2(w - op.phi));
 		
-		if (world_rank == 0) {
-			cout << ">> " << iter << " "  << delta  << endl;
-		}
 		
 	}
 	MPI_Barrier(MPI_COMM_WORLD);
@@ -639,17 +591,10 @@ int main(int argc, char** argv) {
 	int N, M;
 	ParseArgs(argc, argv, &N, &M);
 	GetLatticeParams();
-	if (world_rank == 0) {
-		cerr <<  "Lattice params:" << lattice_n << " " << lattice_m << endl;
-	}
 
 	int block_h, block_w;
 	
 	ComputeLatticeCoord(world_rank, &my_i, &my_j);
-	out << "Lattice coord:" << world_rank << " " << my_i << " " << my_j << endl;
-	//cerr << out.str();
-	out.str("");
-	out.clear();
 
 	ComputeBlockSize(N, M, &block_h, &block_w);
 	int row_pos, col_pos;
@@ -658,42 +603,12 @@ int main(int argc, char** argv) {
 	col_pos = M / lattice_m * my_j;
 
 	
-		
-	out << "My size:" << world_rank << " " << block_h << " " << block_w <<  " " << row_pos << " " << col_pos << endl;
-	cerr << out.str();
-	out.str("");
-	out.clear();
-	
 	
 	MPI_Barrier(MPI_COMM_WORLD);
 	
 	LocalOperator op(row_pos, col_pos, N, M, block_h, block_w, X_MIN, X_MAX, Y_MIN, Y_MAX);
 	
-	/*
-	out <<"Rank" <<  world_rank << endl;
-	for (int i = 0; i < op.block_h; ++i) {
-		for (int j = 0; j < op.block_w; ++j) {
-			out << op.phi.cat(i, j) << " ";
-		}
-		out << endl;
-	}
-	out << "=============\n";
-	
-
-	cerr << out.str();
-	*/
-	auto my_w = Solve(op, 39059, 1e-6); 
-	//PrintMatrix(my_w);
-	
-	/*
-	auto my_w = Solve();
-	SendLocalResultsTo0(my_w);
-	
-	if(world_rank == 0) {
-		auto result = ReceiveLocalResults();
-		DoIOStuff();
-	}
-	*/
+	auto my_w = Solve(op, 10000000, 1e-6); 
 
 	MPI_Finalize();
 }

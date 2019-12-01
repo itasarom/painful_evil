@@ -420,8 +420,14 @@ public:
 		
 	double Dot(const Matrix &a, const Matrix& b) const {
 		double result = 0.0;
-		for (int i = 0; i < N; ++i) {
-			for (int j = 0; j < M; ++j) {
+		if (a.N != block_h || a.M != block_w) {
+			throw "asdfasd";
+		}
+		if (b.N != block_h || b.M != block_w) {
+			throw "asdfasd";
+		}
+		for (int i = 0; i < block_h; ++i) {
+			for (int j = 0; j < block_w; ++j) {
 				result += a.cat(i,j) * b.cat(i, j);
 			}
 		}
@@ -564,6 +570,24 @@ Matrix Solve(LocalOperator &op, int max_iter, double eps=1e-6) {
 		SyncBorder(border_y0_s, border_y0_r, my_i, my_j - 1);
 		SyncBorder(border_y1_s, border_y1_r, my_i, my_j + 1);
 		auto Ar = op.Call(r, border_x0_r, border_x1_r, border_y0_r, border_y1_r);
+
+		
+		/*
+		if (iter == 0) {
+		out <<"Rank" <<  world_rank << endl;
+		for (int i = 0; i < op.block_h; ++i) {
+			for (int j = 0; j < op.block_w; ++j) {
+				out << Ar.cat(i, j) << " ";
+			}
+			out << endl;
+		}
+		out << "=============\n";
+		cerr << out.str();
+		out.str("");
+		out.clear();
+		}
+		*/
+		
 		
 		double rAr = SyncDouble(op.Dot(r, Ar));
 		double ArAr = SyncDouble(op.Dot(Ar, Ar));
@@ -573,10 +597,11 @@ Matrix Solve(LocalOperator &op, int max_iter, double eps=1e-6) {
 		//double tau = 0.005;
 		if (world_rank == 0) {
 			//cerr << iter << " " << tau << endl;
-		//out << world_rank << " " << rAr << " " << ArAr << " " << tau << endl;
-		//cerr << out.str();
-		//out.str("");
-		//out.clear();
+		out << "!!! " <<  world_rank << " " << rAr << " " << ArAr << " " << tau << endl;
+		//out << "rr " <<  world_rank << " " << sqrt(rr) << endl;
+		cerr << out.str();
+		out.str("");
+		out.clear();
 		}
 		
 		w = w - r * tau;
@@ -641,6 +666,7 @@ int main(int argc, char** argv) {
 	
 	LocalOperator op(row_pos, col_pos, N, M, block_h, block_w, X_MIN, X_MAX, Y_MIN, Y_MAX);
 	
+	/*
 	out <<"Rank" <<  world_rank << endl;
 	for (int i = 0; i < op.block_h; ++i) {
 		for (int j = 0; j < op.block_w; ++j) {
@@ -652,8 +678,8 @@ int main(int argc, char** argv) {
 	
 
 	cerr << out.str();
-	
-	auto my_w = Solve(op, 10, 1e-6); 
+	*/
+	auto my_w = Solve(op, 2, 1e-6); 
 	//PrintMatrix(my_w);
 	
 	/*

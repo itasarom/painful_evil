@@ -453,9 +453,9 @@ public:
 		if (b.N != block_h || b.M != block_w) {
 			throw "asdfasd";
 		}
-		#pragma omp parallel for
+		#pragma omp parallel for reduction(+:result)
 		for (int i = 0; i < block_h; ++i) {
-			#pragma omp parallel for
+			#pragma omp parallel for reduction(+:result)
 			for (int j = 0; j < block_w; ++j) {
 				result += a.cat(i,j) * b.cat(i, j);
 			}

@@ -10,6 +10,7 @@
 
 using namespace std;
 
+double start_time;
 
 stringstream out;
 int world_rank;
@@ -112,9 +113,7 @@ struct Matrix {
 	Matrix operator - (const Matrix& other) const {
 		Matrix result(N, M);
 		
-		#pragma omp parallel for
 		for (int i = 0; i < N; ++i) {
-			#pragma omp parallel for
 			for (int j = 0; j < M; ++j) {
 				result.at(i, j) = cat(i, j) - other.cat(i, j);
 			}
@@ -126,9 +125,7 @@ struct Matrix {
 	Matrix operator + (const Matrix& other) const {
 		Matrix result(N, M);
 		
-		#pragma omp parallel for
 		for (int i = 0; i < N; ++i) {
-			#pragma omp parallel for
 			for (int j = 0; j < M; ++j) {
 				result.at(i, j) = cat(i, j) + other.cat(i, j);
 			}
@@ -141,9 +138,7 @@ struct Matrix {
 	Matrix operator * (double num) const {
 		Matrix result(N, M);
 		
-		#pragma omp parallel for
 		for (int i = 0; i < N; ++i) {
-			#pragma omp parallel for
 			for (int j = 0; j < M; ++j) {
 				result.at(i, j) = cat(i, j) * num;
 			}
@@ -293,9 +288,7 @@ public:
 	void BuildRhs() {
 		phi.reset(block_h, block_w);
 
-		#pragma omp parallel for
 		for (int i = 0; i < block_h; ++i) {
-			#pragma omp parallel for
 			for (int j = 0; j < block_w; ++j) {
 				phi.at(i, j) = func_phi(x_.at(i, j),  y_.at(i, j));
 			}
@@ -304,16 +297,13 @@ public:
 		
 		rhs.reset(block_h, block_w);
 		
-		#pragma omp parallel for
 		for (int i = 0; i < block_h; ++i) {
-			#pragma omp parallel for
 			for (int j = 0; j < block_w; ++j) {
 				rhs.at(i, j) = func_F(x_.at(i, j), y_.at(i,j));
 			}
 		}
 
 		if (row_pos == 0) {
-			#pragma omp parallel for
 			for (int j = 0; j < block_w; ++j) {
 				int i = 0;
 				rhs.at(i, j) -= func_phi(x_.at(i, j) - h1,  y_.at(i, j)) * w_im1j_coefs.at(i, j);
@@ -321,7 +311,6 @@ public:
 		}
 
 		if (row_pos + block_h == N) {
-			#pragma omp parallel for
 			for (int j = 0; j < block_w; ++j) {
 				int i = block_h - 1;
 				rhs.at(i, j) -= func_phi(x_.at(i, j) + h1,  y_.at(i, j)) * w_ip1j_coefs.at(i, j);
@@ -330,7 +319,6 @@ public:
 		}
 
 		if (col_pos == 0) {
-			#pragma omp parallel for
 			for (int i = 0; i < block_h; ++i) {
 				int j = 0;
 				rhs.at(i, j) -= func_phi(x_.at(i, j),  y_.at(i, j) - h2) * w_ijm1_coefs.at(i, j);
@@ -338,7 +326,6 @@ public:
 		}
 
 		if (col_pos + block_w == M) {
-			#pragma omp parallel for
 			for (int i = 0; i < block_h; ++i) {
 				int j = block_w - 1;
 				rhs.at(i, j) -= func_phi(x_.at(i, j),  y_.at(i, j) + h2) * w_ijp1_coefs.at(i, j);
@@ -357,77 +344,85 @@ public:
 		
 		Matrix result(w.N, w.M);
 		
-		#pragma omp parallel for
+		#pragma omp parallel for		
 		for (int i = 0; i < block_h; ++i) {
-			#pragma omp parallel for
 			for (int j = 0; j < block_w; ++j) {
-				result.at(i, j) = w_ij_coefs.cat(i, j) * w.cat(i, j);
+				int pos = j + i * block_w;
+				result.data[pos] = w_ij_coefs.data.at(pos) * w.data.at(pos);
+				//result.at(i, j) = w_ij_coefs.cat(i, j) * w.cat(i, j);
 			}
 		}
 		
 		
 		//==================
 		
-		#pragma omp parallel for
+		#pragma omp parallel for		
 		for (int i = 0; i < block_h - 1; ++i) {
-			#pragma omp parallel for
 			for (int j = 0; j < block_w; ++j) {
-				result.at(i, j) += w_ip1j_coefs.cat(i, j) * w.cat(i + 1, j);
+				int pos = j + i * block_w;
+				result.data[pos] += w_ip1j_coefs.cat(i, j) * w.cat(i + 1, j);
+				//result.at(i, j) += w_ip1j_coefs.cat(i, j) * w.cat(i + 1, j);
 			}
 		}
 		if (border_x1.size() != block_w) {
 			throw "asdasdfa";
 		}
 		
-		#pragma omp parallel for
+		#pragma omp parallel for		
 		for (int j = 0; j < block_w; ++j) {
 			int i = block_h - 1;
-			result.at(i, j) += w_ip1j_coefs.cat(i, j) * border_x1[j];
+			int pos = j + i * block_w;
+			result.data[pos] += w_ip1j_coefs.cat(i, j) * border_x1[j];
+			//result.at(i, j) += w_ip1j_coefs.cat(i, j) * border_x1[j];
 		}
 		
 		//==================
 
-		#pragma omp parallel for
 		for (int i = 1; i < block_h; ++i) {
-			#pragma omp parallel for
 			for (int j = 0; j < block_w; ++j) {
-				result.at(i, j) += w_im1j_coefs.cat(i, j) * w.cat(i - 1, j);
+				int pos = j + i * block_w;
+				result.data[pos] += w_im1j_coefs.cat(i, j) * w.cat(i - 1, j);
 			}
 		}
 		if (border_x0.size() != block_w) {
 			throw "asdasdfa";
 		}
 
-		#pragma omp parallel for
+		#pragma omp parallel for		
 		for (int j = 0; j < block_w; ++j) {
 			int i = 0;
-			result.at(i, j) += w_im1j_coefs.cat(i, j) * border_x0[j];
+			int pos = j + i * block_w;
+			result.data[pos] += w_im1j_coefs.cat(i, j) * border_x0[j];
+			//result.at(i, j) += w_im1j_coefs.cat(i, j) * border_x0[j];
 		}
 
 		//==================
-		#pragma omp parallel for
+		#pragma omp parallel for		
 		for (int i = 0; i < block_h; ++i) {
-			#pragma omp parallel for
 			for (int j = 0; j < block_w - 1; ++j) {
-				result.at(i, j) += w_ijp1_coefs.cat(i, j) * w.cat(i, j + 1);
+				int pos = j + i * block_w;
+				result.data[pos] += w_ijp1_coefs.cat(i, j) * w.cat(i, j + 1);
+				// result.at(i, j) += w_ijp1_coefs.cat(i, j) * w.cat(i, j + 1);
 			}
 		}
 		if (border_y1.size() != block_h) {
 			throw "asdasdfa";
 		}
 
-		#pragma omp parallel for
 		for (int i = 0; i < block_h; ++i) {
 			int j = block_w - 1;
-			result.at(i, j) += w_ijp1_coefs.cat(i, j) * border_y1[i];
+			int pos = j + i * block_w;
+			result.data[pos] += w_ijp1_coefs.cat(i, j) * border_y1[i];
+			//result.at(i, j) += w_ijp1_coefs.cat(i, j) * border_y1[i];
 		}
 
 		//==================
-		#pragma omp parallel for
+		#pragma omp parallel for		
 		for (int i = 0; i < block_h; ++i) {
-			#pragma omp parallel for
 			for (int j = 1; j < block_w; ++j) {
-				result.at(i, j) += w_ijm1_coefs.cat(i, j) * w.cat(i, j - 1);
+				int pos = j + i * block_w;
+				result.data[pos] += w_ijm1_coefs.cat(i, j) * w.cat(i, j - 1);
+				//result.at(i, j) += w_ijm1_coefs.cat(i, j) * w.cat(i, j - 1);
 			}
 		}
 		
@@ -435,10 +430,12 @@ public:
 			throw "asdasdfa";
 		}
 
-		#pragma omp parallel for
+		#pragma omp parallel for		
 		for (int i = 0; i < block_h; ++i) {
 			int j = 0;
-			result.at(i, j) += w_ijm1_coefs.cat(i, j) * border_y0[i];
+			int pos = j + i * block_w;
+			result.data[pos] += w_ijm1_coefs.cat(i, j) * border_y0[i];
+			//result.at(i, j) += w_ijm1_coefs.cat(i, j) * border_y0[i];
 		}
 		
 
@@ -453,9 +450,7 @@ public:
 		if (b.N != block_h || b.M != block_w) {
 			throw "asdfasd";
 		}
-		#pragma omp parallel for reduction(+:result)
 		for (int i = 0; i < block_h; ++i) {
-			#pragma omp parallel for reduction(+:result)
 			for (int j = 0; j < block_w; ++j) {
 				result += a.cat(i,j) * b.cat(i, j);
 			}
@@ -582,7 +577,7 @@ Matrix Solve(LocalOperator &op, int max_iter, double eps=1e-6) {
 		double ArAr = SyncDouble(op.Dot(Ar, Ar));
 		double rr = SyncDouble(op.Dot(r, r));
 		
-		double tau = rAr/ArAr;
+		double tau = rAr/ArAr/2;
 		
 		
 		w = w - r * tau;
@@ -594,7 +589,8 @@ Matrix Solve(LocalOperator &op, int max_iter, double eps=1e-6) {
 			out << sqrt(rr) << "\t";
 			out << d << "\t";
 			out << sqrt(delta) << "\t";
-			out << tau;
+			out << tau << "\t";
+			out << MPI_Wtime() - start_time;
 			out << endl;
 			cout << out.str();
 			out.str("");
@@ -632,6 +628,10 @@ int main(int argc, char** argv) {
 	ComputeLatticeCoord(world_rank, &my_i, &my_j);
 
 	ComputeBlockSize(N, M, &block_h, &block_w);
+	if (world_rank == 0) {
+		out << "lattice " << lattice_n << " " << lattice_m << endl;
+		cout << out.str();
+	}
 	int row_pos, col_pos;
 	
 	row_pos = N / lattice_n * my_i;
@@ -642,16 +642,15 @@ int main(int argc, char** argv) {
 	MPI_Barrier(MPI_COMM_WORLD);
 	
 	LocalOperator op(row_pos, col_pos, N, M, block_h, block_w, X_MIN, X_MAX, Y_MIN, Y_MAX);
-	double start_time = MPI_Wtime();
-	
+	start_time = MPI_Wtime();
+
 	Matrix my_w = Solve(op, 10000000, 1e-6); 
 	double total_time = MPI_Wtime() - start_time;
 	
 	if (world_rank == 0) {
 		out << "Time " << total_time << endl;
-		cerr << out.str();
+		cout << out.str();
 	}
-	
 
 	MPI_Finalize();
 }

@@ -10,6 +10,7 @@
 
 using namespace std;
 
+double start_time;
 
 stringstream out;
 int world_rank;
@@ -552,7 +553,7 @@ Matrix Solve(LocalOperator &op, int max_iter, double eps=1e-6) {
 		double ArAr = SyncDouble(op.Dot(Ar, Ar));
 		double rr = SyncDouble(op.Dot(r, r));
 		
-		double tau = rAr/ArAr;
+		double tau = rAr/ArAr/2;
 		
 		
 		w = w - r * tau;
@@ -564,7 +565,8 @@ Matrix Solve(LocalOperator &op, int max_iter, double eps=1e-6) {
 			out << sqrt(rr) << "\t";
 			out << d << "\t";
 			out << sqrt(delta) << "\t";
-			out << tau;
+			out << tau << "\t";
+			out << MPI_Wtime() - start_time;
 			out << endl;
 			cout << out.str();
 			out.str("");
@@ -612,14 +614,14 @@ int main(int argc, char** argv) {
 	MPI_Barrier(MPI_COMM_WORLD);
 	
 	LocalOperator op(row_pos, col_pos, N, M, block_h, block_w, X_MIN, X_MAX, Y_MIN, Y_MAX);
-	double start_time = MPI_Wtime();
+	start_time = MPI_Wtime();
 
 	Matrix my_w = Solve(op, 10000000, 1e-6); 
 	double total_time = MPI_Wtime() - start_time;
 	
 	if (world_rank == 0) {
 		out << "Time " << total_time << endl;
-		cerr << out.str();
+		cout << out.str();
 	}
 
 	MPI_Finalize();

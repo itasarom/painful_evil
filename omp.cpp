@@ -577,7 +577,7 @@ Matrix Solve(LocalOperator &op, int max_iter, double eps=1e-6) {
 		double ArAr = SyncDouble(op.Dot(Ar, Ar));
 		double rr = SyncDouble(op.Dot(r, r));
 		
-		double tau = rAr/ArAr/2;
+		double tau = rAr/ArAr;
 		
 		
 		w = w - r * tau;
